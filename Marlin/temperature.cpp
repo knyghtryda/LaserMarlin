@@ -1180,6 +1180,7 @@ void disable_all_heaters() {
 
 #endif //HEATER_0_USES_MAX6675
 
+#ifndef LASER
 /**
  * Stages in the ISR loop
  */
@@ -1616,6 +1617,7 @@ ISR(TIMER0_COMPB_vect) {
     }
   #endif //BABYSTEPPING
 }
+#endif
 
 #ifdef PIDTEMP
   // Apply the scale factors to the PID values
