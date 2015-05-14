@@ -75,6 +75,21 @@ float st_get_position_mm(uint8_t axis);
 // to notify the subsystem that it is time to go to work.
 void st_wake_up();
 
+//Galvo control functions
+void scan_X_Y_galvo(unsigned long x1, unsigned long y1, unsigned long x2, unsigned long y2);
+void coordinate_XY_move(unsigned long X, unsigned long Y);
+
+short World_to_Galvo(long value);
+void X_galvo_step(int step_dir);
+void Y_galvo_step(int step_dir);
+//void digitalPotWrite(int channel, int value);
+void galvoTransfer(unsigned int axis, uint16_t position);
+void move_galvos(unsigned long X, unsigned long Y);
+void set_galvo_pos(unsigned long X, unsigned long Y);
+void move_X_galvo(unsigned short X);
+void move_Y_galvo(unsigned short Y);
+
+void timed_refresh_of_galvos(void);
   
 void checkHitEndstops(); //call from somewhere to create an serial error message with the locations the endstops where hit, in case they were triggered
 void endstops_hit_on_purpose(); //avoid creation of the message, i.e. after homing and before a routine call of checkHitEndstops();
