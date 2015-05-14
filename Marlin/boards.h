@@ -57,6 +57,7 @@
 #define BOARD_BAM_DICE          401  // 2PrintBeta BAM&DICE with STK drivers
 #define BOARD_BAM_DICE_DUE      402  // 2PrintBeta BAM&DICE Due with STK drivers
 
+#define BOARD_LASER				600
 #define BOARD_99                99   // This is in pins.h but...?
 
 #define MB(board) (MOTHERBOARD==BOARD_##board)
