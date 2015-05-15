@@ -21,3 +21,5 @@ Marlin/Marlin.sdf
 *.suo
 Marlin/Visual Micro/.Marlin.vsarduino.h
 *.filters
+Marlin/Visual Micro/Compile.vmps.xml
+Marlin/Visual Micro/Configuration.Debug.vmps.xml

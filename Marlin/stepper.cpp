@@ -687,20 +687,27 @@ ISR(TIMER1_COMPA_vect) {
 
     #ifndef ADVANCE
       if (TEST(out_bits, E_AXIS)) {  // -direction
+#ifndef LASER
         REV_E_DIR();
+#endif
         count_direction[E_AXIS] = -1;
       }
       else { // +direction
+#ifndef LASER
         NORM_E_DIR();
+#endif
         count_direction[E_AXIS] = 1;
       }
     #endif //!ADVANCE
 
+#define _COUNTER(axis) counter_## axis
+#define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
+
 #ifdef LASER
 #define APPLY_GALVO_MOVEMENT(axis, AXIS) \
-          counter_## axis += current_block->steps_## axis * step_loops; \
-          if (counter_## axis > 0) { \
-            counter_## axis -= current_block->step_event_count * step_loops; \
+          _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] * step_loops; \
+          if (_COUNTER(axis) > 0) { \
+            _COUNTER(axis) -= current_block->step_event_count * step_loops; \
             count_position[AXIS ##_AXIS] += count_direction[AXIS ##_AXIS] * step_loops; \
             AXIS ##_galvo_step(count_direction[AXIS ##_AXIS] * step_loops); \
 		            }
@@ -722,8 +729,6 @@ ISR(TIMER1_COMPA_vect) {
         }
       #endif //ADVANCE
 
-      #define _COUNTER(axis) counter_## axis
-      #define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
       #define _INVERT_STEP_PIN(AXIS) INVERT_## AXIS ##_STEP_PIN
 
       #define STEP_ADD(axis, AXIS) \
@@ -732,11 +737,11 @@ ISR(TIMER1_COMPA_vect) {
 #ifndef LASER
       STEP_ADD(x,X);
       STEP_ADD(y,Y);
+#ifndef ADVANCE
+	  STEP_ADD(e, E);
+#endif
 #endif
       STEP_ADD(z,Z);
-      #ifndef ADVANCE
-        STEP_ADD(e,E);
-      #endif
 
       #define STEP_IF_COUNTER(axis, AXIS) \
         if (_COUNTER(axis) > 0) { \
@@ -747,11 +752,12 @@ ISR(TIMER1_COMPA_vect) {
 #ifndef LASER
       STEP_IF_COUNTER(x, X);
       STEP_IF_COUNTER(y, Y);
+#ifndef ADVANCE
+	  STEP_IF_COUNTER(e, E);
+#endif
 #endif
       STEP_IF_COUNTER(z, Z);
-      #ifndef ADVANCE
-        STEP_IF_COUNTER(e, E);
-      #endif
+
 
       step_events_completed++;
       if (step_events_completed >= current_block->step_event_count) break;
