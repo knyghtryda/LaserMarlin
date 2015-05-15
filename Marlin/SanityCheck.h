@@ -302,9 +302,11 @@
       #error HEATER_1_PIN not defined for this board
     #endif
   #endif
+#ifndef LASER
   #if !HAS_HEATER_0
     #error HEATER_0_PIN not defined for this board
   #endif
+#endif
 
   /**
    * Warnings for old configurations
