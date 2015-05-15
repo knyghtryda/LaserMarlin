@@ -284,13 +284,18 @@
   #endif
   
   /**
-   * MAX_STEP_FREQUENCY differs for TOSHIBA
+   * MAX_STEP_FREQUENCY differs for TOSHIBA or laser Galvos
    */
-  #ifdef CONFIG_STEPPERS_TOSHIBA
-    #define MAX_STEP_FREQUENCY 10000 // Max step frequency for Toshiba Stepper Controllers
-  #else
+  
+#ifdef LASER
+#define MAX_STEP_FREQUENCY 12000
+#else
+#ifdef CONFIG_STEPPERS_TOSHIBA
+#define MAX_STEP_FREQUENCY 10000 // Max step frequency for Toshiba Stepper Controllers
+#else
     #define MAX_STEP_FREQUENCY 40000 // Max step frequency for Ultimaker (5000 pps / half step)
   #endif
+#endif
 
   // MS1 MS2 Stepper Driver Microstepping mode table
   #define MICROSTEP1 LOW,LOW
