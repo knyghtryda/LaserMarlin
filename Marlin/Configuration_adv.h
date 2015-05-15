@@ -17,6 +17,7 @@
 /**
  * Thermal Protection parameters
  */
+
 #ifdef THERMAL_PROTECTION_HOTENDS
   #define THERMAL_PROTECTION_PERIOD 40        // Seconds
   #define THERMAL_PROTECTION_HYSTERESIS 4     // Degrees Celsius
@@ -55,7 +56,7 @@
  * Also, if the temperature is set to a value below mintemp, it will not be changed by autotemp.
  * On an Ultimaker, some initial testing worked with M109 S215 B260 F1 in the start.gcode
  */
-#define AUTOTEMP
+//#define AUTOTEMP
 #ifdef AUTOTEMP
   #define AUTOTEMP_OLDWEIGHT 0.98
 #endif
@@ -81,6 +82,7 @@
 //The measured temperature is defined as "actualTemp = (measuredTemp * TEMP_SENSOR_AD595_GAIN) + TEMP_SENSOR_AD595_OFFSET"
 #define TEMP_SENSOR_AD595_OFFSET 0.0
 #define TEMP_SENSOR_AD595_GAIN   1.0
+
 
 //This is for controlling a fan to cool down the stepper drivers
 //it will turn on when any driver is enabled
