@@ -455,25 +455,45 @@ ISR(TIMER1_COMPA_vect) {
   }
 
   if (current_block != NULL) {
+#if defined(LASER) && LASER_CONTROL == 1
+	  // Laser - Continuous Firing Mode
+
+	  if (current_block->laser_status == LASER_ON) {
+		  laser_fire(current_block->laser_intensity);
+	  }
+
+	  if (current_block->laser_status == LASER_OFF) {
+		  laser_extinguish();
+	  }
+#endif
+
     // Set directions TO DO This should be done once during init of trapezoid. Endstops -> interrupt
     out_bits = current_block->direction_bits;
 
     // Set the direction bits (X_AXIS=A_AXIS and Y_AXIS=B_AXIS for COREXY)
     if (TEST(out_bits, X_AXIS)) {
+#ifndef LASER
       X_APPLY_DIR(INVERT_X_DIR,0);
+#endif
       count_direction[X_AXIS] = -1;
     }
     else {
+#ifndef LASER
       X_APPLY_DIR(!INVERT_X_DIR,0);
+#endif
       count_direction[X_AXIS] = 1;
     }
 
     if (TEST(out_bits, Y_AXIS)) {
+#ifndef LASER
       Y_APPLY_DIR(INVERT_Y_DIR,0);
+#endif
       count_direction[Y_AXIS] = -1;
     }
     else {
+#ifndef LASER
       Y_APPLY_DIR(!INVERT_Y_DIR,0);
+#endif
       count_direction[Y_AXIS] = 1;
     }
 
@@ -687,6 +707,7 @@ ISR(TIMER1_COMPA_vect) {
 	  APPLY_GALVO_MOVEMENT(x, X);
 	  APPLY_GALVO_MOVEMENT(y, Y);
 #endif
+
     // Take multiple steps per interrupt (For high speed moves)
     for (int8_t i = 0; i < step_loops; i++) {
       #ifndef AT90USB
@@ -708,9 +729,10 @@ ISR(TIMER1_COMPA_vect) {
       #define STEP_ADD(axis, AXIS) \
         _COUNTER(axis) += current_block->steps[_AXIS(AXIS)]; \
         if (_COUNTER(axis) > 0) { _APPLY_STEP(AXIS)(!_INVERT_STEP_PIN(AXIS),0); }
-
+#ifndef LASER
       STEP_ADD(x,X);
       STEP_ADD(y,Y);
+#endif
       STEP_ADD(z,Z);
       #ifndef ADVANCE
         STEP_ADD(e,E);
@@ -722,9 +744,10 @@ ISR(TIMER1_COMPA_vect) {
           count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)]; \
           _APPLY_STEP(AXIS)(_INVERT_STEP_PIN(AXIS),0); \
         }
-
+#ifndef LASER
       STEP_IF_COUNTER(x, X);
       STEP_IF_COUNTER(y, Y);
+#endif
       STEP_IF_COUNTER(z, Z);
       #ifndef ADVANCE
         STEP_IF_COUNTER(e, E);
@@ -1106,7 +1129,9 @@ void st_init() {
 // Block until all buffered steps are executed
 void st_synchronize() {
   while (blocks_queued()) {
+#ifndef LASER
     manage_heater();
+#endif
     manage_inactivity();
     lcd_update();
   }
@@ -1230,7 +1255,7 @@ void quickStop() {
   }
 
 #endif //BABYSTEPPING
-
+#ifdef LASER
   void set_galvo_pos(unsigned long X, unsigned long Y)
   {
 	  Galvo_WorldXPosition = X;
@@ -1290,6 +1315,7 @@ void quickStop() {
 
 	  move_galvo(Y_AXIS, s);
   }
+#endif
 // From Arduino DigitalPotControl example
 void digitalPotWrite(int address, int value) {
   #if HAS_DIGIPOTSS
