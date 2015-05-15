@@ -188,7 +188,7 @@ static void updateTemperaturesFromRawValues();
 //===========================================================================
 //================================ Functions ================================
 //===========================================================================
-
+#ifdef PIDTEMP
 void PID_autotune(float temp, int extruder, int ncycles)
 {
   float input = 0.0;
@@ -361,7 +361,7 @@ void updatePID() {
     temp_iState_max_bed = PID_INTEGRAL_DRIVE_MAX / bedKi;
   #endif
 }
-
+#endif
 int getHeaterPower(int heater) {
   return heater < 0 ? soft_pwm_bed : soft_pwm[heater];
 }
@@ -532,7 +532,7 @@ float get_pid_output(int e) {
     #endif //PID_DEBUG
 
   #else /* PID off */
-    pid_output = (current_temperature[e] < target_temperature[e]) ? PID_MAX : 0;
+    pid_output = (current_temperature[e] < target_temperature[e]) ? 255 : 0;
   #endif
 
   return pid_output;
