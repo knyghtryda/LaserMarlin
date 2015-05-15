@@ -51,10 +51,13 @@
 #include "Marlin.h"
 #include "planner.h"
 #include "stepper.h"
-#include "temperature.h"
 #include "ultralcd.h"
 #include "language.h"
-
+#ifdef LASER
+#include "laser.h"
+#else
+#include "temperature.h"
+#endif
 #ifdef MESH_BED_LEVELING
   #include "mesh_bed_leveling.h"
 #endif
@@ -478,7 +481,9 @@ float junction_deviation = 0.1;
   // If the buffer is full: good! That means we are well ahead of the robot. 
   // Rest here until there is room in the buffer.
   while(block_buffer_tail == next_buffer_head) {
+#ifndef LASER
     manage_heater(); 
+#endif
     manage_inactivity(); 
     lcd_update();
   }
