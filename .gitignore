@@ -15,3 +15,9 @@ applet/
 *.bak
 *.DS_Store
 *.idea
+*.vcxproj
+*.opensdf
+Marlin/Marlin.sdf
+*.suo
+Marlin/Visual Micro/.Marlin.vsarduino.h
+*.filters
