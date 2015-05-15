@@ -46,13 +46,19 @@
 #include "ultralcd.h"
 #include "planner.h"
 #include "stepper.h"
-#include "temperature.h"
 #include "cardreader.h"
 #include "watchdog.h"
 #include "configuration_store.h"
 #include "language.h"
 #include "pins_arduino.h"
 #include "math.h"
+
+#ifdef LASER
+#include <SPI.h>
+#include "laser.h"
+#else
+#include "temperature.h"
+#endif
 
 #ifdef BLINKM
   #include "blinkm.h"
@@ -566,6 +572,22 @@ void servo_init() {
   #endif
 }
 
+#ifdef LASER
+void setup_galvos()
+{
+#ifdef GALVO_SS_PIN
+	pinMode(GALVO_SS_PIN, OUTPUT);
+	SPI.setClockDivider(SPI_CLOCK_DIV2);
+	SPI.begin();
+#endif
+
+#if (LASER_FIRING_PIN > -1) 
+	SET_OUTPUT(LASER_FIRING_PIN);
+#endif  
+
+}
+#endif
+
 /**
  * Marlin entry-point: Set up before the program loop
  *  - Set up the kill pin, filament runout, power hold
@@ -583,11 +605,15 @@ void servo_init() {
  *    • Digipot I2C
  *    • Z probe sled
  *    • status LEDs
+ *    • Galvos (if applicable)
  */
 void setup() {
   setup_killpin();
   setup_filrunoutpin();
   setup_powerhold();
+#ifdef LASER
+  setup_galvos();
+#endif
   MYSERIAL.begin(BAUDRATE);
   SERIAL_PROTOCOLLNPGM("start");
   SERIAL_ECHO_START;
@@ -628,8 +654,9 @@ void setup() {
 
   // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
   Config_RetrieveSettings();
-
+#ifndef LASER
   tp_init();    // Initialize temperature loop
+#endif
   plan_init();  // Initialize planner;
   watchdog_init();
   st_init();    // Initialize stepper, this enables interrupts!
@@ -715,7 +742,9 @@ void loop() {
     cmd_queue_index_r = (cmd_queue_index_r + 1) % BUFSIZE;
   }
   // Check heater every n milliseconds
+#ifndef LASER
   manage_heater();
+#endif
   manage_inactivity();
   checkHitEndstops();
   lcd_update();
@@ -1572,7 +1601,12 @@ static void homeaxis(AxisEnum axis) {
         (axis == X_AXIS) ? x_home_dir(active_extruder) :
       #endif
       home_dir(axis);
-
+#ifdef LASER
+	current_position[X_AXIS] = 0;
+	current_position[Y_AXIS] = 0;
+	set_galvo_pos(0, 0);
+	move_galvos(0, 0);
+#endif
     // Set the axis position as setup for the move
     current_position[axis] = 0;
     sync_plan_position();
@@ -1984,7 +2018,9 @@ inline void gcode_G4() {
   if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL);
 
   while (millis() < codenum) {
+#ifndef LASER
     manage_heater();
+#endif
     manage_inactivity();
     lcd_update();
   }
@@ -2660,8 +2696,9 @@ inline void gcode_G28() {
           #endif
 
           probePointCounter++;
-
+#ifndef LASER
           manage_heater();
+#endif
           manage_inactivity();
           lcd_update();
 
@@ -2863,7 +2900,9 @@ inline void gcode_G92() {
     if (codenum > 0) {
       codenum += previous_cmd_ms;  // keep track of when we started waiting
       while(millis() < codenum && !lcd_clicked()) {
+#ifndef LASER
         manage_heater();
+#endif
         manage_inactivity();
         lcd_update();
       }
@@ -2872,7 +2911,9 @@ inline void gcode_G92() {
     else {
       if (!lcd_detected()) return;
       while (!lcd_clicked()) {
+#ifndef LASER
         manage_heater();
+#endif
         manage_inactivity();
         lcd_update();
       }
@@ -3010,7 +3051,9 @@ inline void gcode_M31() {
   SERIAL_ECHO_START;
   SERIAL_ECHOLN(time);
   lcd_setstatus(time);
+#ifndef LASER
   autotempShutdown();
+#endif
 }
 
 #ifdef SDSUPPORT
@@ -3347,6 +3390,7 @@ inline void gcode_M42() {
 /**
  * M104: Set hot end temperature
  */
+#ifndef LASER
 inline void gcode_M104() {
   if (setTargetedHotend(104)) return;
 
@@ -3363,6 +3407,7 @@ inline void gcode_M104() {
     #endif
   }
 }
+#endif
 
 /**
  * M105: Read hot end and bed temperature
@@ -3393,10 +3438,12 @@ inline void gcode_M105() {
       SERIAL_PROTOCOL_F(degTargetHotend(e), 1);
     }
   #else // !HAS_TEMP_0 && !HAS_TEMP_BED
+#ifndef LASER
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM(MSG_ERR_NO_THERMISTORS);
+#endif
   #endif
-
+#ifndef LASER
   SERIAL_PROTOCOLPGM(" @:");
   #ifdef EXTRUDER_WATTS
     SERIAL_PROTOCOL((EXTRUDER_WATTS * getHeaterPower(target_extruder))/127);
@@ -3412,6 +3459,7 @@ inline void gcode_M105() {
   #else
     SERIAL_PROTOCOL(getHeaterPower(-1));
   #endif
+#endif
 
   #ifdef SHOW_TEMP_ADC_VALUES
     #if HAS_TEMP_BED
@@ -3450,6 +3498,7 @@ inline void gcode_M105() {
 /**
  * M109: Wait for extruder(s) to reach temperature
  */
+#if HAS_TEMP_0
 inline void gcode_M109() {
   if (setTargetedHotend(109)) return;
 
@@ -3513,7 +3562,9 @@ inline void gcode_M109() {
         #endif
         temp_ms = millis();
       }
+#ifndef LASER
       manage_heater();
+#endif
       manage_inactivity();
       lcd_update();
       #ifdef TEMP_RESIDENCY_TIME
@@ -3532,7 +3583,7 @@ inline void gcode_M109() {
   refresh_cmd_timeout();
   print_job_start_ms = previous_cmd_ms;
 }
-
+#endif
 #if HAS_TEMP_BED
 
   /**
@@ -3563,7 +3614,9 @@ inline void gcode_M109() {
         SERIAL_PROTOCOL_F(degBed(), 1);
         SERIAL_EOL;
       }
+#ifndef LASER
       manage_heater();
+#endif
       manage_inactivity();
       lcd_update();
     }
@@ -3614,10 +3667,11 @@ inline void gcode_M112() { kill(); }
 /**
  * M140: Set bed temperature
  */
+#ifndef LASER
 inline void gcode_M140() {
   if (code_seen('S')) setTargetBed(code_value());
 }
-
+#endif
 #ifdef ULTIPANEL
 
   /**
@@ -3704,7 +3758,11 @@ inline void gcode_M140() {
  *      This code should ALWAYS be available for EMERGENCY SHUTDOWN!
  */
 inline void gcode_M81() {
+#ifdef LASER
+	laser_extinguish();
+#else
   disable_all_heaters();
+#endif
   st_synchronize();
   disable_e0();
   disable_e1();
@@ -4257,7 +4315,9 @@ inline void gcode_M226() {
         }
 
         while(digitalRead(pin_number) != target) {
+#ifndef LASER
           manage_heater();
+#endif
           manage_inactivity();
           lcd_update();
         }
@@ -4456,12 +4516,14 @@ inline void gcode_M226() {
  *       E<extruder> (-1 for the bed)
  *       C<cycles>
  */
+#ifdef PIDTEMP
 inline void gcode_M303() {
   int e = code_seen('E') ? code_value_short() : 0;
   int c = code_seen('C') ? code_value_short() : 5;
   float temp = code_seen('S') ? code_value() : (e < 0 ? 70.0 : 150.0);
   PID_autotune(temp, e, c);
 }
+#endif
 
 #ifdef SCARA
   bool SCARA_move_to_cal(uint8_t delta_x, uint8_t delta_y) {
@@ -4905,7 +4967,9 @@ inline void gcode_M503() {
     uint8_t cnt = 0;
     while (!lcd_clicked()) {
       if (++cnt == 0) lcd_quick_feedback(); // every 256th frame till the lcd is clicked
+#ifndef LASER
       manage_heater();
+#endif
       manage_inactivity(true);
       lcd_update();
     } // while(!lcd_clicked)
@@ -5318,11 +5382,11 @@ void process_commands() {
           gcode_M48();
           break;
       #endif // ENABLE_AUTO_BED_LEVELING && Z_PROBE_REPEATABILITY_TEST
-
+#ifndef LASER
       case 104: // M104
         gcode_M104();
         break;
-
+#endif
       case 111: // M111: Set debug level
         gcode_M111();
         break;
@@ -5330,20 +5394,21 @@ void process_commands() {
       case 112: // M112: Emergency Stop
         gcode_M112();
         break;
-
+#if HAS_TEMP_BED
       case 140: // M140: Set bed temp
         gcode_M140();
         break;
-
+#endif
       case 105: // M105: Read current temperature
         gcode_M105();
         return;
         break;
 
+#if HAS_TEMP_0
       case 109: // M109: Wait for temperature
         gcode_M109();
         break;
-
+#endif
       #if HAS_TEMP_BED
         case 190: // M190: Wait for bed heater to reach target
           gcode_M190();
@@ -5551,11 +5616,11 @@ void process_commands() {
           gcode_M302();
           break;
       #endif // PREVENT_DANGEROUS_EXTRUDE
-
+#ifdef PIDTEMP
       case 303: // M303 PID autotune
         gcode_M303();
         break;
-
+#endif
       #ifdef SCARA
         case 360:  // M360 SCARA Theta pos1
           if (gcode_M360()) return;
@@ -6358,8 +6423,11 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
 void kill()
 {
   cli(); // Stop interrupts
-  disable_all_heaters();
-
+#ifdef LASER
+  laser_extinguish();
+#else
+  disable_heater();
+#endif
   disable_all_steppers();
 
   #if HAS_POWER_SWITCH
@@ -6390,7 +6458,11 @@ void kill()
 #endif
 
 void Stop() {
-  disable_all_heaters();
+#ifdef LASER
+	laser_extinguish();
+#else 
+	disable_heater();
+#endif
   if (IsRunning()) {
     Running = false;
     Stopped_gcode_LastN = gcode_LastN; // Save last g_code for restart
