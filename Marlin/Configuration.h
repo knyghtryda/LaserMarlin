@@ -81,6 +81,9 @@ Here are some standard links for getting your machine calibrated:
 // 1 : Direct PWM control
 #define LASER_CONTROL 1
 #define LASER_FIRE_E 12 // fire the laser when the E axis moves
+// uncomment this to use inverted logic (high == off, low == on) for laser
+#define INVERT_LASER
+// uncomment for laser diagnostic output via serial
 //#define LASER_DIAGNOSTICS
 
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
@@ -337,7 +340,7 @@ const bool X_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 const bool Y_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic of the endstop.
 const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic of the endstop.
 const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic of the endstop.
-//#define DISABLE_MAX_ENDSTOPS
+#define DISABLE_MAX_ENDSTOPS
 //#define DISABLE_MIN_ENDSTOPS
 
 // @section machine
@@ -398,9 +401,9 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 #define X_MIN_POS 0
 #define Y_MIN_POS 0
 #define Z_MIN_POS 0
-#define X_MAX_POS 160
-#define Y_MAX_POS 160
-#define Z_MAX_POS 160
+#define X_MAX_POS 150
+#define Y_MAX_POS 150
+#define Z_MAX_POS 140
 
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
 #define Y_MAX_LENGTH (Y_MAX_POS - Y_MIN_POS)
@@ -575,7 +578,7 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 // M501 - reads parameters from EEPROM (if you need reset them after you changed them temporarily).
 // M502 - reverts to the default "factory settings".  You still need to store them in EEPROM afterwards if you want to.
 //define this to enable EEPROM support
-//#define EEPROM_SETTINGS
+#define EEPROM_SETTINGS
 
 #ifdef EEPROM_SETTINGS
   // To disable EEPROM Serial responses and decrease program space by ~1700 byte: comment this out:
@@ -608,7 +611,7 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
   //#define DISPLAY_CHARSET_HD44780_WESTERN
   //#define DISPLAY_CHARSET_HD44780_CYRILLIC
 
-//#define ULTRA_LCD  //general LCD support, also 16x2
+#define ULTRA_LCD  //general LCD support, also 16x2
 //#define DOGLCD  // Support for SPI LCD 128x64 (Controller ST7565R graphic Display Family)
 //#define SDSUPPORT // Enable SD Card Support in Hardware Console
 //#define SDSLOW // Use slower SD transfer mode (not normally needed - uncomment if you're getting volume init error)
@@ -657,7 +660,9 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 // http://www.elefu.com/index.php?route=product/product&product_id=53
 // REMEMBER TO INSTALL LiquidCrystal_I2C.h in your ARDUINO library folder: https://github.com/kiyoshigawa/LiquidCrystal_I2C
 //#define RA_CONTROL_PANEL
-
+// LCD Shield
+// The cheap Sainsmart/knockoff lcd shields
+#define LCDSHIELD
 /**
  * I2C Panels
  */

@@ -830,6 +830,7 @@ static void updateTemperaturesFromRawValues() {
  * Initialize the temperature manager
  * The manager is implemented by periodic calls to manage_heater()
  */
+#ifndef LASER
 void tp_init() {
   #if MB(RUMBA) && ((TEMP_SENSOR_0==-1)||(TEMP_SENSOR_1==-1)||(TEMP_SENSOR_2==-1)||(TEMP_SENSOR_BED==-1))
     //disable RUMBA JTAG in case the thermocouple extension is plugged on top of JTAG connector
@@ -999,7 +1000,7 @@ void tp_init() {
     }
   #endif //BED_MAXTEMP
 }
-
+#endif
 #ifdef THERMAL_PROTECTION_HOTENDS
   /**
    * Start Heating Sanity Check for hotends that are below

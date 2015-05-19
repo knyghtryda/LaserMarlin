@@ -32,7 +32,7 @@
 #define Z_STEP_PIN         59//3 //new board pin 59
 #define Z_DIR_PIN          60//4 //new board pin 60
 #define Z_ENABLE_PIN       58//2 //new board pin 58 //62
-#define Z_MIN_PIN          -1//15//18
+#define Z_MIN_PIN          56//15//18
 #define Z_MAX_PIN          -1//19
 
 #define Y2_STEP_PIN        -1//36

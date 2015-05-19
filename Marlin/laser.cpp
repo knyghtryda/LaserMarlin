@@ -28,7 +28,12 @@ laser_t laser;
 void laser_init()
 {
   pinMode(LASER_FIRING_PIN, OUTPUT);
-
+#ifdef INVERT_LASER
+  //WRITE(LASER_FIRING_PIN, HIGH);
+  analogWrite(LASER_FIRING_PIN, 255);
+#else
+  analogWrite(LASER_FIRING_PIN, 0);
+#endif
   #if LASER_CONTROL == 3
     pinMode(LASER_POWER_PIN, OUTPUT);
     analogWrite(LASER_FIRING_PIN, 1);  // let Arduino setup do it's thing to the PWM pin  

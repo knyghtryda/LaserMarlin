@@ -5050,7 +5050,19 @@ inline void gcode_M503() {
   }
 
 #endif // DUAL_X_CARRIAGE
-
+#if LASER_FIRING_PIN > -1
+  inline void gcode_M650() {
+	  if (code_seen('S')){
+		  laser_fire(constrain(code_value(), 0, 255));
+	  }
+	  else {
+		  laser_fire(255);
+	  }
+  }
+  inline void gcode_M651() {
+	  laser_extinguish();
+  }
+#endif
 /**
  * M907: Set digital trimpot motor current using axis codes X, Y, Z, E, B, S
  */

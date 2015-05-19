@@ -62,8 +62,12 @@ FORCE_INLINE void laser_fire(unsigned long intensity){
 
   if (laser.firing == LASER_OFF) {
     laser.firing = LASER_ON;
-    #if LASER_CONTROL == 1
-      analogWrite(LASER_FIRING_PIN, intensity);
+#if LASER_CONTROL == 1
+#ifdef INVERT_LASER
+	analogWrite(LASER_FIRING_PIN, 255 - intensity);
+#else
+	analogWrite(LASER_FIRING_PIN, intensity);
+#endif
     #elif LASER_CONTROL == 3
       WRITE(LASER_POWER_PIN, HIGH);
       analogWrite(LASER_FIRING_PIN, intensity);
@@ -79,7 +83,11 @@ FORCE_INLINE void laser_extinguish() {
   if (laser.firing == LASER_ON) {
     laser.firing = LASER_OFF;
 #if LASER_CONTROL == 1
-    analogWrite(LASER_FIRING_PIN, 0);
+#ifdef INVERT_LASER
+	analogWrite(LASER_FIRING_PIN, 255);
+#else
+	analogWrite(LASER_FIRING_PIN, 0);
+#endif
     #elif LASER_CONTROL == 3
     digitalWrite(LASER_POWER_PIN, LOW);
     #endif

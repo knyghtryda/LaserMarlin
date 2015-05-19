@@ -446,8 +446,9 @@ void Config_RetrieveSettings() {
 
     calculate_volumetric_multipliers();
     // Call updatePID (similar to when we have processed M301)
+#ifndef LASER
     updatePID();
-
+#endif
     // Report settings retrieved and length
     SERIAL_ECHO_START;
     SERIAL_ECHO(ver);
