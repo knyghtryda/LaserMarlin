@@ -113,7 +113,6 @@ FORCE_INLINE void serialprintPGM(const char *str) {
 }
 
 void get_command();
-void process_commands();
 
 void manage_inactivity(bool ignore_stepper_queue=false);
 
@@ -221,7 +220,7 @@ void ok_to_send();
 #endif
 void reset_bed_level();
 void prepare_move();
-void kill();
+void kill(const char *);
 void Stop();
 
 #ifdef FILAMENT_RUNOUT_SENSOR
