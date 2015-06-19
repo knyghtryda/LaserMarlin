@@ -599,9 +599,13 @@ void setup_galvos()
 	SPI.setClockDivider(SPI_CLOCK_DIV2);
 	SPI.begin();
 #endif
+}
 
+void setup_laser()
+{
 #if (LASER_FIRING_PIN > -1) 
 	SET_OUTPUT(LASER_FIRING_PIN);
+	laser_init();
 	laser_extinguish();
 #endif  
 
@@ -633,6 +637,7 @@ void setup() {
   setup_powerhold();
 #ifdef LASER
   setup_galvos();
+  setup_laser();
 #endif
   MYSERIAL.begin(BAUDRATE);
   SERIAL_PROTOCOLLNPGM("start");
@@ -3681,10 +3686,12 @@ inline void gcode_M111() {
   //if (marlin_debug_flags & DEBUG_ERRORS) SERIAL_ECHOLNPGM(MSG_DEBUG_ERRORS);
   if (marlin_debug_flags & DEBUG_DRYRUN) {
     SERIAL_ECHOLNPGM(MSG_DEBUG_DRYRUN);
+#ifndef LASER
     setTargetBed(0);
     for (int8_t cur_hotend = 0; cur_hotend < EXTRUDERS; ++cur_hotend) {
       setTargetHotend(0, cur_hotend);
     }
+#endif
   }
 }
 
@@ -6437,7 +6444,9 @@ void disable_all_steppers() {
  * Standard idle routine keeps the machine alive
  */
 void idle() {
+#ifndef LASER
   manage_heater();
+#endif
   manage_inactivity();
   lcd_update();
 }
