@@ -20,22 +20,19 @@
 
 #include "fastio.h"
 #include "Configuration.h"
+#include "pins.h"
 
 #ifndef SANITYCHECK_H
   #error Your Configuration.h and Configuration_adv.h files are outdated!
 #endif
 
-#if (ARDUINO >= 100)
-  #include "Arduino.h"
-#else
-  #include "WProgram.h"
-#endif
+#include "Arduino.h"
 
 #define BIT(b) (1<<(b))
 #define TEST(n,b) (((n)&BIT(b))!=0)
 #define SET_BIT(n,b,value) (n) ^= ((-value)^(n)) & (BIT(b))
 #define RADIANS(d) ((d)*M_PI/180.0)
-#define DEGREES(r) ((d)*180.0/M_PI)
+#define DEGREES(r) ((r)*180.0/M_PI)
 #define NOLESS(v,n) do{ if (v < n) v = n; }while(0)
 #define NOMORE(v,n) do{ if (v > n) v = n; }while(0)
 
@@ -114,6 +111,8 @@ FORCE_INLINE void serialprintPGM(const char *str) {
 }
 
 void get_command();
+
+void idle(); // the standard idle routine calls manage_inactivity(false)
 
 void manage_inactivity(bool ignore_stepper_queue=false);
 
@@ -266,7 +265,7 @@ extern float homing_feedrate[];
 extern bool axis_relative_modes[];
 extern int feedrate_multiplier;
 extern bool volumetric_enabled;
-extern int extruder_multiply[EXTRUDERS]; // sets extrude multiply factor (in percent) for each extruder individually
+extern int extruder_multiplier[EXTRUDERS]; // sets extrude multiply factor (in percent) for each extruder individually
 extern float filament_size[EXTRUDERS]; // cross-sectional area of filament (in millimeters), typically around 1.75 or 2.85, 0 disables the volumetric calculations for the extruder.
 extern float volumetric_multiplier[EXTRUDERS]; // reciprocal of cross-sectional area of filament (in square millimeters), stored this way to reduce computational burden in planner
 extern float current_position[NUM_AXIS];

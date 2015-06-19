@@ -125,6 +125,9 @@
 #elif defined(U8GLIB_LM6059_AF)
   // Based on the Adafruit ST7565 (http://www.adafruit.com/products/250)
   U8GLIB_LM6059 u8g(DOGLCD_CS, DOGLCD_A0);
+#elif defined U8GLIB_SSD1306
+  // Generic support for SSD1306 OLED I2C LCDs
+  U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE);
 #else
   // for regular DOGM128 display with HW-SPI
   U8GLIB_DOGM128 u8g(DOGLCD_CS, DOGLCD_A0);  // HW-SPI Com: CS, A0
@@ -381,7 +384,7 @@ static void lcd_implementation_status_screen() {
       lcd_printPGM(PSTR("dia:"));
       lcd_print(ftostr12ns(filament_width_meas));
       lcd_printPGM(PSTR(" factor:"));
-      lcd_print(itostr3(volumetric_multiplier[FILAMENT_SENSOR_EXTRUDER_NUM]));
+      lcd_print(itostr3(100.0 * volumetric_multiplier[FILAMENT_SENSOR_EXTRUDER_NUM]));
       lcd_print('%');
     }
   #endif

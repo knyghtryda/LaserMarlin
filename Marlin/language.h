@@ -20,6 +20,7 @@
 // de       German
 // es       Spanish
 // ru       Russian
+// bg       Bulgarian
 // it       Italian
 // pt       Portuguese
 // pt-br    Portuguese (Brazil)
@@ -45,35 +46,22 @@
 
 #if MB(ULTIMAKER)|| MB(ULTIMAKER_OLD)|| MB(ULTIMAIN_2)
   #define MACHINE_NAME "Ultimaker"
-  #define FIRMWARE_URL "http://firmware.ultimaker.com"
+  #define SOURCE_CODE_URL "http://firmware.ultimaker.com"
 #elif MB(RUMBA)
   #define MACHINE_NAME "Rumba"
 #elif MB(3DRAG)
   #define MACHINE_NAME "3Drag"
-  #define FIRMWARE_URL "http://3dprint.elettronicain.it/"
+  #define SOURCE_CODE_URL "http://3dprint.elettronicain.it/"
 #elif MB(K8200)
   #define MACHINE_NAME "K8200"
-  #define FIRMWARE_URL "https://github.com/CONSULitAS/Marlin-K8200"
+  #define SOURCE_CODE_URL "https://github.com/CONSULitAS/Marlin-K8200"
 #elif MB(5DPRINT)
   #define MACHINE_NAME "Makibox"
 #elif MB(SAV_MKI)
   #define MACHINE_NAME "SAV MkI"
-  #define FIRMWARE_URL "https://github.com/fmalpartida/Marlin/tree/SAV-MkI-config"
-#elif MB(WITBOX)
-  #define MACHINE_NAME "WITBOX"
-  #define FIRMWARE_URL "http://www.bq.com/gb/downloads-witbox.html"
-#elif MB(HEPHESTOS)
-  #define MACHINE_NAME "HEPHESTOS"
-  #define FIRMWARE_URL "http://www.bq.com/gb/downloads-prusa-i3-hephestos.html"
-#elif MB(BRAINWAVE_PRO)
-  #define MACHINE_NAME "Kossel Pro"
-  #ifndef FIRMWARE_URL
-    #define FIRMWARE_URL "https://github.com/OpenBeamUSA/Marlin/"
-  #endif
-#else
-  #ifndef MACHINE_NAME
-    #define MACHINE_NAME "3D Printer"
-  #endif
+  #define SOURCE_CODE_URL "https://github.com/fmalpartida/Marlin/tree/SAV-MkI-config"
+#elif !defined(MACHINE_NAME)
+  #define MACHINE_NAME "3D Printer"
 #endif
 
 #ifdef CUSTOM_MENDEL_NAME
@@ -86,8 +74,8 @@
   #define MACHINE_NAME CUSTOM_MACHINE_NAME
 #endif
 
-#ifndef FIRMWARE_URL
-  #define FIRMWARE_URL "https://github.com/MarlinFirmware/Marlin"
+#ifndef SOURCE_CODE_URL
+  #define SOURCE_CODE_URL "https://github.com/MarlinFirmware/Marlin"
 #endif
 
 #ifndef BUILD_VERSION
@@ -134,18 +122,12 @@
 #define MSG_END_FILE_LIST                   "End file list"
 #define MSG_INVALID_EXTRUDER                "Invalid extruder"
 #define MSG_INVALID_SOLENOID                "Invalid solenoid"
-#define MSG_M104_INVALID_EXTRUDER           "M104 " MSG_INVALID_EXTRUDER " "
-#define MSG_M105_INVALID_EXTRUDER           "M105 " MSG_INVALID_EXTRUDER " "
-#define MSG_M109_INVALID_EXTRUDER           "M109 " MSG_INVALID_EXTRUDER " "
-#define MSG_M200_INVALID_EXTRUDER           "M200 " MSG_INVALID_EXTRUDER " "
-#define MSG_M218_INVALID_EXTRUDER           "M218 " MSG_INVALID_EXTRUDER " "
-#define MSG_M221_INVALID_EXTRUDER           "M221 " MSG_INVALID_EXTRUDER " "
 #define MSG_ERR_NO_THERMISTORS              "No thermistors - no temperature"
 #define MSG_HEATING                         "Heating..."
 #define MSG_HEATING_COMPLETE                "Heating done."
 #define MSG_BED_HEATING                     "Bed Heating."
 #define MSG_BED_DONE                        "Bed done."
-#define MSG_M115_REPORT                     "FIRMWARE_NAME:Marlin " BUILD_VERSION " FIRMWARE_URL:" FIRMWARE_URL " PROTOCOL_VERSION:" PROTOCOL_VERSION " MACHINE_TYPE:" MACHINE_NAME " EXTRUDER_COUNT:" STRINGIFY(EXTRUDERS) " UUID:" MACHINE_UUID "\n"
+#define MSG_M115_REPORT                     "FIRMWARE_NAME:Marlin " BUILD_VERSION " SOURCE_CODE_URL:" SOURCE_CODE_URL " PROTOCOL_VERSION:" PROTOCOL_VERSION " MACHINE_TYPE:" MACHINE_NAME " EXTRUDER_COUNT:" STRINGIFY(EXTRUDERS) " UUID:" MACHINE_UUID "\n"
 #define MSG_COUNT_X                         " Count X: "
 #define MSG_ERR_KILLED                      "Printer halted. kill() called!"
 #define MSG_ERR_STOPPED                     "Printer stopped due to errors. Fix the error and use M999 to restart. (Temperature is reset. Set it after restarting)"
@@ -213,8 +195,8 @@
 #define MSG_KP                              " Kp: "
 #define MSG_KI                              " Ki: "
 #define MSG_KD                              " Kd: "
-#define MSG_OK_B                            "ok B:"
-#define MSG_OK_T                            "ok T:"
+#define MSG_B                               "B:"
+#define MSG_T                               "T:"
 #define MSG_AT                              " @:"
 #define MSG_PID_AUTOTUNE_FINISHED           MSG_PID_AUTOTUNE " finished! Put the last Kp, Ki and Kd constants from below into Configuration.h"
 #define MSG_PID_DEBUG                       " PID_DEBUG "
@@ -233,6 +215,11 @@
 #define MSG_T_MAXTEMP                       "MAXTEMP triggered"
 #define MSG_T_MINTEMP                       "MINTEMP triggered"
 
+// Debug
+#define MSG_DEBUG_ECHO                      "DEBUG ECHO ENABLED"
+#define MSG_DEBUG_INFO                      "DEBUG INFO ENABLED"
+#define MSG_DEBUG_ERRORS                    "DEBUG ERRORS ENABLED"
+#define MSG_DEBUG_DRYRUN                    "DEBUG DRYRUN ENABLED"
 
 // LCD Menu Messages
 

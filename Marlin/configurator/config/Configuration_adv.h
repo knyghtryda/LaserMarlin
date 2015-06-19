@@ -36,6 +36,15 @@
   #define THERMAL_PROTECTION_BED_HYSTERESIS 2 // Degrees Celsius
 #endif
 
+#ifdef PIDTEMP
+  // this adds an experimental additional term to the heating power, proportional to the extrusion speed.
+  // if Kc is chosen well, the additional required power due to increased melting should be compensated.
+  #define PID_ADD_EXTRUSION_RATE
+  #ifdef PID_ADD_EXTRUSION_RATE
+    #define  DEFAULT_Kc (1) //heating power=Kc*(e_speed)
+  #endif
+#endif
+
 /**
  * Automatic Temperature:
  * The hotend target temperature is calculated by all the buffered lines of gcode.
@@ -46,23 +55,6 @@
  * Also, if the temperature is set to a value below mintemp, it will not be changed by autotemp.
  * On an Ultimaker, some initial testing worked with M109 S215 B260 F1 in the start.gcode
  */
-#ifdef PIDTEMP
-  // this adds an experimental additional term to the heating power, proportional to the extrusion speed.
-  // if Kc is chosen well, the additional required power due to increased melting should be compensated.
-  #define PID_ADD_EXTRUSION_RATE
-  #ifdef PID_ADD_EXTRUSION_RATE
-    #define  DEFAULT_Kc (1) //heating power=Kc*(e_speed)
-  #endif
-#endif
-
-
-//automatic temperature: The hot end target temperature is calculated by all the buffered lines of gcode.
-//The maximum buffered steps/sec of the extruder motor are called "se".
-//You enter the autotemp mode by a M109 S<mintemp> B<maxtemp> F<factor>
-// the target temperature is set to mintemp+factor*se[steps/sec] and limited by mintemp and maxtemp
-// you exit the value by any M109 without F*
-// Also, if the temperature is set to a value <mintemp, it is not changed by autotemp.
-// on an Ultimaker, some initial testing worked with M109 S215 B260 F1 in the start.gcode
 #define AUTOTEMP
 #ifdef AUTOTEMP
   #define AUTOTEMP_OLDWEIGHT 0.98
@@ -147,12 +139,13 @@
   // Play a little bit with small adjustments (0.5mm) and check the behaviour.
   // The M119 (endstops report) will start reporting the Z2 Endstop as well.
 
-  #define Z_DUAL_ENDSTOPS
+  #define Z2_STEP_PIN E2_STEP_PIN           // Stepper to be used to Z2 axis.
+  #define Z2_DIR_PIN E2_DIR_PIN
+  #define Z2_ENABLE_PIN E2_ENABLE_PIN
+
+  // #define Z_DUAL_ENDSTOPS
 
   #ifdef Z_DUAL_ENDSTOPS
-    #define Z2_STEP_PIN E2_STEP_PIN           // Stepper to be used to Z2 axis.
-    #define Z2_DIR_PIN E2_DIR_PIN
-    #define Z2_ENABLE_PIN E2_ENABLE_PIN
     #define Z2_MAX_PIN 36                     //Endstop used for Z2 axis. In this case I'm using XMAX in a Rumba Board (pin 36)
     const bool Z2_MAX_ENDSTOP_INVERTING = false;
     #define DISABLE_XMAX_ENDSTOP              //Better to disable the XMAX to avoid conflict. Just rename "XMAX_ENDSTOP" by the endstop you are using for Z2 axis.
@@ -320,6 +313,9 @@
     // Enable this to show messages for MSG_TIME then hide them
     //#define PROGRESS_MSG_ONCE
   #endif
+
+  // This allows hosts to request long names for files and folders with M33
+  //#define LONG_FILENAME_HOST_SUPPORT
 
 #endif // SDSUPPORT
 

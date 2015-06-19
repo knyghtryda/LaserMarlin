@@ -42,17 +42,16 @@
 #define BOARD_GEN3_MONOLITHIC   22   // Gen3 Monolithic Electronics
 #define BOARD_MEGATRONICS       70   // Megatronics
 #define BOARD_MEGATRONICS_2     701  // Megatronics v2.0
-#define BOARD_MEGATRONICS_1     702  // Minitronics v1.0
+#define BOARD_MINITRONICS       702  // Minitronics v1.0/1.1
 #define BOARD_MEGATRONICS_3     703  // Megatronics v3.0
 #define BOARD_OMCA_A            90   // Alpha OMCA board
 #define BOARD_OMCA              91   // Final OMCA board
 #define BOARD_RAMBO             301  // Rambo
+#define BOARD_MINIRAMBO         302  // Mini-Rambo
 #define BOARD_ELEFU_3           21   // Elefu Ra Board (v3)
 #define BOARD_5DPRINT           88   // 5DPrint D8 Driver Board
 #define BOARD_LEAPFROG          999  // Leapfrog
 #define BOARD_MKS_BASE          40   // MKS BASE 1.0
-#define BOARD_WITBOX            41   // bq WITBOX
-#define BOARD_HEPHESTOS         42   // bq Prusa i3 Hephestos
 #define BOARD_BAM_DICE          401  // 2PrintBeta BAM&DICE with STK drivers
 #define BOARD_BAM_DICE_DUE      402  // 2PrintBeta BAM&DICE Due with STK drivers
 

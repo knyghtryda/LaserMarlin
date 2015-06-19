@@ -298,11 +298,7 @@ void checkHitEndstops() {
         card.sdprinting = false;
         card.closefile();
         quickStop();
-        setTargetHotend0(0);
-        setTargetHotend1(0);
-        setTargetHotend2(0);
-        setTargetHotend3(0);
-        setTargetBed(0);
+        disable_all_heaters(); // switch off all heaters.
       }
     #endif
   }
@@ -604,7 +600,8 @@ ISR(TIMER1_COMPA_vect) {
               #if HAS_Z2_MIN
                 SET_ENDSTOP_BIT(Z2, MIN);
               #else
-                COPY_BIT(current_endstop_bits, Z_MIN, Z2_MIN)
+
+                COPY_BIT(current_endstop_bits, Z_MIN, Z2_MIN);
               #endif
 
             byte z_test = TEST_ENDSTOP(Z_MIN) << 0 + TEST_ENDSTOP(Z2_MIN) << 1; // bit 0 for Z, bit 1 for Z2
@@ -612,8 +609,8 @@ ISR(TIMER1_COMPA_vect) {
             if (z_test && current_block->steps[Z_AXIS] > 0) { // z_test = Z_MIN || Z2_MIN
               endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
               endstop_hit_bits |= BIT(Z_MIN);
-              if (!performing_homing || (performing_homing && !((~z_test) & 0x3)))  //if not performing home or if both endstops were trigged during homing...
-                step_events_completed = current_block->step_event_count;            //!((~z_test) & 0x3) = Z_MIN && Z2_MIN
+              if (!performing_homing || (z_test == 0x3))  //if not performing home or if both endstops were trigged during homing...
+                step_events_completed = current_block->step_event_count;
             }
           #else // !Z_DUAL_ENDSTOPS
 
@@ -623,7 +620,6 @@ ISR(TIMER1_COMPA_vect) {
 
         #ifdef Z_PROBE_ENDSTOP
           UPDATE_ENDSTOP(Z, PROBE);
-          SET_ENDSTOP_BIT(Z, PROBE);
 
           if (TEST_ENDSTOP(Z_PROBE))
           {
@@ -649,8 +645,9 @@ ISR(TIMER1_COMPA_vect) {
             if (z_test && current_block->steps[Z_AXIS] > 0) {  // t_test = Z_MAX || Z2_MAX
               endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
               endstop_hit_bits |= BIT(Z_MIN);
-              if (!performing_homing || (performing_homing && !((~z_test) & 0x3)))  //if not performing home or if both endstops were trigged during homing...
-                step_events_completed = current_block->step_event_count;            //!((~z_test) & 0x3) = Z_MAX && Z2_MAX
+
+              if (!performing_homing || (z_test == 0x3))  //if not performing home or if both endstops were trigged during homing...
+                step_events_completed = current_block->step_event_count;
             }
 
           #else // !Z_DUAL_ENDSTOPS
@@ -662,7 +659,7 @@ ISR(TIMER1_COMPA_vect) {
         
         #ifdef Z_PROBE_ENDSTOP
           UPDATE_ENDSTOP(Z, PROBE);
-          SET_ENDSTOP_BIT(Z, PROBE);
+
           if (TEST_ENDSTOP(Z_PROBE))
           {
             endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
@@ -672,6 +669,7 @@ ISR(TIMER1_COMPA_vect) {
       }
       old_endstop_bits = current_endstop_bits;
     }
+
 
 #define _COUNTER(axis) counter_## axis
 #define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
@@ -687,6 +685,7 @@ ISR(TIMER1_COMPA_vect) {
 	  APPLY_GALVO_MOVEMENT(x, X);
 	  APPLY_GALVO_MOVEMENT(y, Y);
 #endif
+
 
     // Take multiple steps per interrupt (For high speed moves)
     for (int8_t i = 0; i < step_loops; i++) {
@@ -1109,16 +1108,10 @@ void st_init() {
 }
 
 
-// Block until all buffered steps are executed
-void st_synchronize() {
-  while (blocks_queued()) {
-#ifndef LASER
-    manage_heater();
-#endif
-    manage_inactivity();
-    lcd_update();
-  }
-}
+/**
+ * Block until all buffered steps are executed
+ */
+void st_synchronize() { while (blocks_queued()) idle(); }
 
 void st_set_position(const long &x, const long &y, const long &z, const long &e) {
   CRITICAL_SECTION_START;

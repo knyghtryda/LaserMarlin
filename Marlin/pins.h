@@ -34,7 +34,9 @@
   #include "pins_SETHI.h"
 #elif MB(RAMPS_OLD)
   #include "pins_RAMPS_OLD.h"
-#elif MB(RAMPS_13_EFB) || MB(RAMPS_13_EEB) || MB(RAMPS_13_EFF) || MB(RAMPS_13_EEF) || MB(RAMPS_13_SF)
+#elif MB(RAMPS_13_EFB)
+  #include "pins_RAMPS_13_EFB.h"
+#elif MB(RAMPS_13_EEB) || MB(RAMPS_13_EFF) || MB(RAMPS_13_EEF) || MB(RAMPS_13_SF)
   #include "pins_RAMPS_13.h"
 #elif MB(GEN6)
   #include "pins_GEN6.h"
@@ -86,8 +88,8 @@
   #include "pins_GEN3_MONOLITHIC.h"
 #elif MB(MEGATRONICS)
   #include "pins_MEGATRONICS.h"
-#elif MB(MEGATRONICS_1)
-  #include "pins_MEGATRONICS_1.h"
+#elif MB(MINITRONICS)
+  #include "pins_MINITRONICS.h"
 #elif MB(MEGATRONICS_2)
   #include "pins_MEGATRONICS_2.h"
 #elif MB(MEGATRONICS_3)
@@ -98,16 +100,14 @@
   #include "pins_OMCA.h"
 #elif MB(RAMBO)
   #include "pins_RAMBO.h"
+#elif MB(MINIRAMBO)
+  #include "pins_MINIRAMBO.h"
 #elif MB(ELEFU_3)
   #include "pins_ELEFU_3.h"
 #elif MB(5DPRINT)
   #include "pins_5DPRINT.h"
 #elif MB(LEAPFROG)
   #include "pins_LEAPFROG.h"
-#elif MB(WITBOX)
-  #include "pins_WITBOX.h"
-#elif MB(HEPHESTOS)
-  #include "pins_HEPHESTOS.h"
 #elif MB(BAM_DICE)
   #include "pins_RAMPS_13.h"
 #elif MB(BAM_DICE_DUE)
@@ -116,6 +116,8 @@
   #include "pins_FELIX2.h"
 #elif MB(LASER)
 #include "pins_LASER.h"
+#elif MB(MKS_BASE)
+  #include "pins_MKS_BASE.h"
 #elif MB(99)
   #include "pins_99.h"
 #else

@@ -31,7 +31,7 @@
   // encoder click is directly connected
   #define BLEN_C 2 
   #define EN_C BIT(BLEN_C) 
-#endif 
+#endif
   
 //
 // Setup other button mappings of each panel
@@ -396,7 +396,7 @@ char lcd_printPGM(const char* str) {
 }
 
 char lcd_print(char* str) {
-  char c, n = 0;;
+  char c, n = 0;
   unsigned char i = 0;
   while ((c = str[i++])) n += charset_mapper(c);
   return n;
