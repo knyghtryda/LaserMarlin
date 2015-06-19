@@ -69,11 +69,13 @@ Here are some standard links for getting your machine calibrated:
 
 // Optional custom name for your RepStrap or other custom machine
 // Displayed in the LCD "Ready" message
-// #define CUSTOM_MACHINE_NAME "3D Printer"
+#define CUSTOM_MACHINE_NAME "Mullis Machine"
 
 // Enables Laser Galvo controls
 #define LASER
+#ifdef LASER
 // Multiplier for galvo steps.  Speeds up movement.  45 ~= 0.1mm/step
+// This will need to be deprecated
 #define XY_GALVO_SCALAR 32
 // Multiplier for the scaling table in order to correct for curvature
 #define MULT_SCALAR 1
@@ -85,7 +87,13 @@ Here are some standard links for getting your machine calibrated:
 #define INVERT_LASER
 // uncomment for laser diagnostic output via serial
 //#define LASER_DIAGNOSTICS
-
+// Number of segments in order to handle mapping.  Adjust based on how
+// processor is coping with load
+#define LASER_SEGMENTS_PER_SECOND 100
+// Distance from final mirror to base of reservoir.  Needs to be accurate in
+// order for calibration to be accurate
+#define LASER_RES_DISTANCE 140
+#endif
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
 // You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
 // #define MACHINE_UUID "00000000-0000-0000-0000-000000000000"
@@ -541,8 +549,8 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 #define XY_STEPS_PER_UNIT 4096/X_MAX_POS //65535/X_MAX_POS/XY_GALVO_SCALAR
 #define Z_STEPS_PER_UNIT 200 * 16 * 18 / 25.4
 #define DEFAULT_AXIS_STEPS_PER_UNIT   {XY_STEPS_PER_UNIT,XY_STEPS_PER_UNIT,2267,500}  // default steps per unit for Ultimaker
-#define DEFAULT_MAX_FEEDRATE          {1000, 1000, 20, 25}    // (mm/sec)
-#define DEFAULT_MAX_ACCELERATION      {9000,9000,20,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for Skeinforge 40+, for older versions raise them a lot.
+#define DEFAULT_MAX_FEEDRATE          {1000, 1000, 30, 25}    // (mm/sec)
+#define DEFAULT_MAX_ACCELERATION      {9000,9000,50,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for Skeinforge 40+, for older versions raise them a lot.
 
 #define DEFAULT_ACCELERATION          3000    // X, Y, Z and E acceleration in mm/s^2 for printing moves
 #define DEFAULT_RETRACT_ACCELERATION  3000   // E acceleration in mm/s^2 for retracts
@@ -665,6 +673,7 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 // http://www.elefu.com/index.php?route=product/product&product_id=53
 // REMEMBER TO INSTALL LiquidCrystal_I2C.h in your ARDUINO library folder: https://github.com/kiyoshigawa/LiquidCrystal_I2C
 //#define RA_CONTROL_PANEL
+
 // LCD Shield
 // The cheap Sainsmart/knockoff lcd shields
 #define LCDSHIELD
