@@ -1246,9 +1246,12 @@ void quickStop() {
 
   FORCE_INLINE void move_galvo(unsigned int axis, unsigned short value)
   {
+	  /*
 	  offset_value = (int) value - grid;
 	  sign = offset_value < 0 ? -1 : 1;
 	  scaled_value = (int) pgm_read_word_near(dac_table + abs(offset_value)) * sign + 32767;
+	  */
+	  scaled_value = value;
 	  //relocated galvo transfer here to save a function call
 	  WRITE(GALVO_SS_PIN, LOW);
 	  SPI.transfer((axis | (3 << 4)));  // Sets the axis and update immediately
