@@ -372,6 +372,14 @@ bool target_direction;
   static bool home_all_axis = true;
 #endif
 
+#ifdef LASER
+  float galvo[3] = { 0 };
+  float laser_res_distance = LASER_RES_DISTANCE;
+  float x_length = X_MAX_LENGTH;
+  float y_length = Y_MAX_LENGTH;
+  float laser_segments_per_second = LASER_SEGMENTS_PER_SECOND;
+#endif
+
 #ifdef SCARA
   float delta_segments_per_second = SCARA_SEGMENTS_PER_SECOND;
   static float delta[3] = { 0 };
@@ -591,6 +599,7 @@ void setup_galvos()
 
 #if (LASER_FIRING_PIN > -1) 
 	SET_OUTPUT(LASER_FIRING_PIN);
+	laser_extinguish();
 #endif  
 
 }
@@ -5284,10 +5293,8 @@ void process_next_command() {
 
   // Get the command code, which must be G, M, or T
   char command_code = *current_command;
-
   // The code must have a numeric value
   bool code_is_good = (current_command[1] >= '0' && current_command[1] <= '9');
-
   int codenum; // define ahead of goto
 
   // Bail early if there's no code
@@ -5300,8 +5307,7 @@ void process_next_command() {
   while (*current_command_args == ' ') ++current_command_args;
 
   // Interpret the code int
-  codenum = code_value_short();
-
+  codenum = strtol(current_command + 1, NULL, 10);//code_value_short();
   // Handle a known G, M, or T
   switch(command_code) {
     case 'G': switch (codenum) {
@@ -5780,7 +5786,14 @@ void process_next_command() {
           gcode_M605();
           break;
       #endif // DUAL_X_CARRIAGE
-
+#ifdef LASER
+		case 650:
+			gcode_M650();
+			break;
+		case 651:
+			gcode_M651();
+			break;
+#endif
       case 907: // M907 Set digital trimpot motor current using axis codes.
         gcode_M907();
         break;
@@ -6078,6 +6091,52 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
 #endif // DELTA || SCARA
 
+// Code for doing real time mapping of print space to galvo space
+// in order to compensate for galvo calibration offsets
+#ifdef LASER
+  void calculate_galvo(float cartesian[3]) {
+	  galvo[X_AXIS] = cartesian[X_AXIS];
+	  galvo[Y_AXIS] = cartesian[Y_AXIS];
+	  galvo[Z_AXIS] = cartesian[Z_AXIS];
+  }
+
+  inline bool prepare_move_laser() {
+	  float difference[NUM_AXIS];
+	  for (int8_t i=0; i < NUM_AXIS; i++) difference[i] = destination[i] - current_position[i];
+
+	  float cartesian_mm = sqrt(sq(difference[X_AXIS]) + sq(difference[Y_AXIS]));
+	  if (cartesian_mm < 0.000001) cartesian_mm = abs(difference[E_AXIS]);
+	  if (cartesian_mm < 0.000001) return false;
+	  float seconds = 6000 * cartesian_mm / feedrate / feedrate_multiplier;
+	  int steps = max(1, int(laser_segments_per_second * seconds));
+
+	  // SERIAL_ECHOPGM("mm="); SERIAL_ECHO(cartesian_mm);
+	  // SERIAL_ECHOPGM(" seconds="); SERIAL_ECHO(seconds);
+	  // SERIAL_ECHOPGM(" steps="); SERIAL_ECHOLN(steps);
+
+	  for (int s = 1; s <= steps; s++) {
+
+		  float fraction = float(s) / float(steps);
+
+		  for (int8_t i = 0; i < NUM_AXIS; i++)
+			  destination[i] = current_position[i] + difference[i] * fraction;
+
+		  calculate_galvo(destination);
+
+		  //SERIAL_ECHOPGM("destination[X_AXIS]="); SERIAL_ECHOLN(destination[X_AXIS]);
+		  //SERIAL_ECHOPGM("destination[Y_AXIS]="); SERIAL_ECHOLN(destination[Y_AXIS]);
+		  //SERIAL_ECHOPGM("destination[Z_AXIS]="); SERIAL_ECHOLN(destination[Z_AXIS]);
+		  //SERIAL_ECHOPGM("delta[X_AXIS]="); SERIAL_ECHOLN(delta[X_AXIS]);
+		  //SERIAL_ECHOPGM("delta[Y_AXIS]="); SERIAL_ECHOLN(delta[Y_AXIS]);
+		  //SERIAL_ECHOPGM("delta[Z_AXIS]="); SERIAL_ECHOLN(delta[Z_AXIS]);
+
+		  plan_buffer_line(galvo[X_AXIS], galvo[Y_AXIS], galvo[Z_AXIS], destination[E_AXIS], feedrate/60*feedrate_multiplier/100.0, active_extruder);
+	  }
+	  return true;
+  }
+
+#endif // LASER
+
 #ifdef SCARA
   inline bool prepare_move_scara() { return prepare_move_delta(); }
 #endif
@@ -6161,8 +6220,12 @@ void prepare_move() {
   #ifdef DUAL_X_CARRIAGE
     if (!prepare_move_dual_x_carriage()) return;
   #endif
-
-  #if !defined(DELTA) && !defined(SCARA)
+	/**
+#ifdef LASER
+	if (!prepare_move_laser()) return;
+#endif
+	**/
+#if !defined(DELTA) && !defined(SCARA)// && !defined(LASER)
     if (!prepare_move_cartesian()) return;
   #endif
 
