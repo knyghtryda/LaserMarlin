@@ -509,6 +509,18 @@ float junction_deviation = 0.1;
         dz = target[Z_AXIS] - position[Z_AXIS],
         de = target[E_AXIS] - position[E_AXIS];
 
+#ifdef LASER_FIRE_E
+  if (de > 0 && (dx > 0 || dy > 0))
+	  //&& current_position[Z_AXIS] == destination[Z_AXIS] // Disabling Z check on laser fire
+	   {
+	  laser.status = LASER_ON;
+	  laser.fired = LASER_FIRE_E;
+  }
+  if (de == 0){
+	  laser.status = LASER_OFF;
+  }
+#endif // LASER_FIRE_E
+
   #ifdef PREVENT_DANGEROUS_EXTRUDE
     if (de) {
       if (degHotend(extruder) < extrude_min_temp && !(marlin_debug_flags & DEBUG_DRYRUN)) {
@@ -704,6 +716,7 @@ float junction_deviation = 0.1;
   float inverse_second = feed_rate * inverse_millimeters;
 
   int moves_queued = movesplanned();
+
 
 #ifdef LASER
   block->laser_intensity = 255;
