@@ -682,8 +682,8 @@ ISR(TIMER1_COMPA_vect) {
             count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] * step_loops; \
             AXIS ##_galvo_step(count_direction[_AXIS(AXIS)] * step_loops); \
 		            }
-	// APPLY_GALVO_MOVEMENT(x, X);
-	//  APPLY_GALVO_MOVEMENT(y, Y);
+	 APPLY_GALVO_MOVEMENT(x, X);
+	 APPLY_GALVO_MOVEMENT(y, Y);
 #endif
 
 
@@ -1245,12 +1245,12 @@ void quickStop() {
 	  sign = offset_value < 0 ? -1 : 1;
 	  scaled_value = (int) pgm_read_word_near(dac_table + abs(offset_value)) * sign + 32767;
 	  */
-	  //scaled_value = value;
+	  scaled_value = value << 4;
 	  //relocated galvo transfer here to save a function call
 	  WRITE(GALVO_SS_PIN, LOW);
 	  SPI.transfer((axis | (3 << 4)));  // Sets the axis and update immediately
-	  SPI.transfer((uint8_t)((unsigned short) value >> 8));
-	  SPI.transfer((uint8_t)(unsigned short) value);  // Sends position
+	  SPI.transfer((uint8_t)((unsigned short) scaled_value >> 8));
+	  SPI.transfer((uint8_t)(unsigned short) scaled_value);  // Sends position
 	  WRITE(GALVO_SS_PIN, HIGH);
   }
 
