@@ -679,11 +679,11 @@ ISR(TIMER1_COMPA_vect) {
           _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] * step_loops; \
           if (_COUNTER(axis) > 0) { \
             _COUNTER(axis) -= current_block->step_event_count * step_loops; \
-            count_position[AXIS ##_AXIS] += count_direction[AXIS ##_AXIS] * step_loops; \
-            AXIS ##_galvo_step(count_direction[AXIS ##_AXIS] * step_loops); \
+            count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] * step_loops; \
+            AXIS ##_galvo_step(count_direction[_AXIS(AXIS)] * step_loops); \
 		            }
-	  APPLY_GALVO_MOVEMENT(x, X);
-	  APPLY_GALVO_MOVEMENT(y, Y);
+	// APPLY_GALVO_MOVEMENT(x, X);
+	//  APPLY_GALVO_MOVEMENT(y, Y);
 #endif
 
 
@@ -708,14 +708,7 @@ ISR(TIMER1_COMPA_vect) {
       #define STEP_ADD(axis, AXIS) \
         _COUNTER(axis) += current_block->steps[_AXIS(AXIS)]; \
         if (_COUNTER(axis) > 0) { _APPLY_STEP(AXIS)(!_INVERT_STEP_PIN(AXIS),0); }
-#ifndef LASER
-      STEP_ADD(x,X);
-      STEP_ADD(y,Y);
-#ifndef ADVANCE
-	  STEP_ADD(e, E);
-#endif
-#endif
-      STEP_ADD(z,Z);
+
 
       #define STEP_IF_COUNTER(axis, AXIS) \
         if (_COUNTER(axis) > 0) { \
@@ -723,15 +716,23 @@ ISR(TIMER1_COMPA_vect) {
           count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)]; \
           _APPLY_STEP(AXIS)(_INVERT_STEP_PIN(AXIS),0); \
         }
-#ifndef LASER
-      STEP_IF_COUNTER(x, X);
-      STEP_IF_COUNTER(y, Y);
-#ifndef ADVANCE
-	  STEP_IF_COUNTER(e, E);
-#endif
-#endif
-      STEP_IF_COUNTER(z, Z);
 
+#if X_STEP_PIN > -1 && X_DIR_PIN > -1
+		STEP_ADD(x,X);
+		STEP_IF_COUNTER(x, X);
+#endif
+#if Y_STEP_PIN > -1 && Y_DIR_PIN > -1
+		STEP_ADD(y,Y);
+		STEP_IF_COUNTER(y, Y);
+#endif
+#if E0_STEP_PIN > -1 && E0_DIR_PIN > -1 && defined(ADVANCE)
+		STEP_ADD(e, E);
+		STEP_IF_COUNTER(e, E);
+#endif
+#if Z_STEP_PIN > -1 && Z_DIR_PIN > -1
+		STEP_ADD(z, Z);
+		STEP_IF_COUNTER(z, Z);
+#endif
 
       step_events_completed++;
       if (step_events_completed >= current_block->step_event_count) break;
@@ -1244,12 +1245,12 @@ void quickStop() {
 	  sign = offset_value < 0 ? -1 : 1;
 	  scaled_value = (int) pgm_read_word_near(dac_table + abs(offset_value)) * sign + 32767;
 	  */
-	  scaled_value = value;
+	  //scaled_value = value;
 	  //relocated galvo transfer here to save a function call
 	  WRITE(GALVO_SS_PIN, LOW);
 	  SPI.transfer((axis | (3 << 4)));  // Sets the axis and update immediately
-	  SPI.transfer((uint8_t)((unsigned short) scaled_value >> 8));
-	  SPI.transfer((uint8_t)(unsigned short) scaled_value);  // Sends position
+	  SPI.transfer((uint8_t)((unsigned short) value >> 8));
+	  SPI.transfer((uint8_t)(unsigned short) value);  // Sends position
 	  WRITE(GALVO_SS_PIN, HIGH);
   }
 
