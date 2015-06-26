@@ -557,19 +557,22 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 
 // default settings
 #define GRID_SIZE 4096 //The scaled down grid used for the dac_table in order to handle curvature compensation
-#define XY_STEPS_PER_UNIT 4096/X_MAX_POS //65535/X_MAX_POS/XY_GALVO_SCALAR
-#define Z_STEPS_PER_UNIT 200 * 16 * 18 / 25.4
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {XY_STEPS_PER_UNIT,XY_STEPS_PER_UNIT,2267,500}  // default steps per unit for Ultimaker
-#define DEFAULT_MAX_FEEDRATE          {1000, 1000, 30, 25}    // (mm/sec)
-#define DEFAULT_MAX_ACCELERATION      {9000,9000,50,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for Skeinforge 40+, for older versions raise them a lot.
+#define XY_STEPS_PER_UNIT GRID_SIZE/X_MAX_POS //65535/X_MAX_POS/XY_GALVO_SCALAR
+#define Z_MICROSTEPS 8
+#define Z_STEPS_PER_REV 200
+#define Z_TPM 18/25.4
+#define Z_STEPS_PER_UNIT Z_STEPS_PER_REV*Z_MICROSTEPS*Z_TPM
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {XY_STEPS_PER_UNIT,XY_STEPS_PER_UNIT,Z_STEPS_PER_UNIT,500}  // default steps per unit for Ultimaker
+#define DEFAULT_MAX_FEEDRATE          {1000, 1000, 6, 25}    // (mm/sec) Note that maximum Z speed is currently ~6 mm/sec before hardware limitations hit
+#define DEFAULT_MAX_ACCELERATION      {10000,10000,5,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for Skeinforge 40+, for older versions raise them a lot.
 
 #define DEFAULT_ACCELERATION          3000    // X, Y, Z and E acceleration in mm/s^2 for printing moves
 #define DEFAULT_RETRACT_ACCELERATION  3000    // E acceleration in mm/s^2 for retracts
 #define DEFAULT_TRAVEL_ACCELERATION   3000    // X, Y, Z acceleration in mm/s^2 for travel (non printing) moves
 
 // The speed change that does not require acceleration (i.e. the software might assume it can be done instantaneously)
-#define DEFAULT_XYJERK                250.0    // (mm/sec)
-#define DEFAULT_ZJERK                 0.4     // (mm/sec)
+#define DEFAULT_XYJERK                10000.0    // (mm/sec)
+#define DEFAULT_ZJERK                 5.0     // (mm/sec)
 #define DEFAULT_EJERK                 5.0    // (mm/sec)
 
 
