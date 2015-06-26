@@ -705,6 +705,21 @@ float junction_deviation = 0.1;
 
   int moves_queued = movesplanned();
 
+#ifdef LASER
+  block->laser_intensity = 255;
+  block->laser_duration = laser.duration;
+  block->laser_status = laser.status;
+  laser.micron_counter = 0;
+  laser.time_counter = 0;
+
+#if LASER_DIAGNOSTICS
+  if (block->laser_status == LASER_ON) {
+	  SERIAL_ECHO_START;
+	  SERIAL_ECHOLNPGM("Laser firing enabled");
+  }
+#endif
+#endif // LASER
+
   // Slow down when the buffer starts to empty, rather than wait at the corner for a buffer refill
   #if defined(OLD_SLOWDOWN) || defined(SLOWDOWN)
     bool mq = moves_queued > 1 && moves_queued < BLOCK_BUFFER_SIZE / 2;
