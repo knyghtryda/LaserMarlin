@@ -5144,6 +5144,7 @@ inline void gcode_M503() {
 	  else {
 		  laser_fire(255);
 	  }
+	  laser.fired = LASER_FIRE_M;
   }
   inline void gcode_M651() {
 	  laser_extinguish();
