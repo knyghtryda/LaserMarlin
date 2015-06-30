@@ -86,7 +86,8 @@ Here are some standard links for getting your machine calibrated:
 // Laser control method
 // 1 : Direct PWM control
 #define LASER_CONTROL 1
-#define LASER_FIRE_E 12 // fire the laser when the E axis moves
+// Extruder controls laser firing
+#define LASER_EXTRUDER 
 // uncomment this to use inverted logic (high == off, low == on) for laser
 #define INVERT_LASER
 // uncomment for laser diagnostic output via serial

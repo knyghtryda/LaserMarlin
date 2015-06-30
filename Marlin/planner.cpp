@@ -509,8 +509,8 @@ float junction_deviation = 0.1;
         dz = target[Z_AXIS] - position[Z_AXIS],
         de = target[E_AXIS] - position[E_AXIS];
 
-#ifdef LASER_FIRE_E
-  if (de > 0 && (dx > 0 || dy > 0))
+#ifdef LASER_EXTRUDER
+  if (de > 0 && (labs(dx) > 0 || labs(dy) > 0))
 	  //&& current_position[Z_AXIS] == destination[Z_AXIS] // Disabling Z check on laser fire
 	   {
 	  laser.status = LASER_ON;
@@ -564,6 +564,18 @@ float junction_deviation = 0.1;
   block->steps[E_AXIS] *= extruder_multiplier[extruder];
   block->steps[E_AXIS] /= 100;
   block->step_event_count = max(block->steps[X_AXIS], max(block->steps[Y_AXIS], max(block->steps[Z_AXIS], block->steps[E_AXIS])));
+
+#ifdef LASER
+  block->laser_intensity = 255;
+  block->laser_status = laser.status;
+
+#if LASER_DIAGNOSTICS
+  if (block->laser_status == LASER_ON) {
+	  SERIAL_ECHO_START;
+	  SERIAL_ECHOLNPGM("Laser firing enabled");
+  }
+#endif
+#endif // LASER
 
   // Bail if this is a zero-length block
   if (block->step_event_count <= dropsegments) return;
@@ -717,21 +729,6 @@ float junction_deviation = 0.1;
 
   int moves_queued = movesplanned();
 
-
-#ifdef LASER
-  block->laser_intensity = 255;
-  block->laser_duration = laser.duration;
-  block->laser_status = laser.status;
-  laser.micron_counter = 0;
-  laser.time_counter = 0;
-
-#if LASER_DIAGNOSTICS
-  if (block->laser_status == LASER_ON) {
-	  SERIAL_ECHO_START;
-	  SERIAL_ECHOLNPGM("Laser firing enabled");
-  }
-#endif
-#endif // LASER
 
   // Slow down when the buffer starts to empty, rather than wait at the corner for a buffer refill
   #if defined(OLD_SLOWDOWN) || defined(SLOWDOWN)
