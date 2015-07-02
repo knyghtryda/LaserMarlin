@@ -207,3 +207,5 @@
   #define MISO_PIN         50
   #define MOSI_PIN         51
 
+#define STEP_TRIGGER 10  //Used to debug timing for stepper ISR
+

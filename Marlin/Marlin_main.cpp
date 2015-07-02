@@ -600,6 +600,7 @@ void setup_galvos()
 	pinMode(GALVO_SS_PIN, OUTPUT);
 	SPI.setClockDivider(SPI_CLOCK_DIV2);
 	SPI.begin();
+	pinMode(STEP_TRIGGER, OUTPUT);
 #endif
 }
 
