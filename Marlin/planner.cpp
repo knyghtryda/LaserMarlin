@@ -568,7 +568,8 @@ float junction_deviation = 0.1;
 #ifdef LASER
   block->laser_intensity = 255;
   block->laser_status = laser.status;
-
+  block->x_dac = target[X_AXIS];
+  block->y_dac = target[Y_AXIS];
 #if LASER_DIAGNOSTICS
   if (block->laser_status == LASER_ON) {
 	  SERIAL_ECHO_START;

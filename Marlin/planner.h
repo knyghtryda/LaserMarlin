@@ -67,6 +67,9 @@ typedef struct {
   unsigned long laser_duration; // laser firing duration in microseconds, for pulsed firing mode
   long steps_l; // step count between firings of the laser, for pulsed firing mode
   unsigned long laser_intensity; // Laser firing instensity in PWM ticks
+  unsigned short x_dac; // translated dac value for the X axis
+  unsigned short y_dac; // translated dac value for the Y axis
+
 #endif
   #ifdef BARICUDA
     unsigned long valve_pressure;
