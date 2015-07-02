@@ -77,8 +77,8 @@ static unsigned short acc_step_rate; // needed for deceleration start point
 static char step_loops;
 static unsigned short OCR1A_nominal;
 static unsigned short step_loops_nominal;
-volatile unsigned long Galvo_WorldXPosition;
-volatile unsigned long Galvo_WorldYPosition;
+volatile unsigned long X_Galvo_Position;
+volatile unsigned long Y_Galvo_Position;
 
 volatile long endstops_trigsteps[3] = { 0 };
 volatile long endstops_stepsTotal, endstops_stepsDone;
@@ -456,7 +456,7 @@ FORCE_INLINE void trapezoid_generator_reset() {
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse.
 // It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately.
 ISR(TIMER1_COMPA_vect) {
-
+	WRITE(STEP_TRIGGER, HIGH);  //Debug pin in order to see ISR timing
   if (cleaning_buffer_counter)
   {
     current_block = NULL;
@@ -668,22 +668,49 @@ ISR(TIMER1_COMPA_vect) {
         #endif
       }
       old_endstop_bits = current_endstop_bits;
-    }
-
-
-#define _COUNTER(axis) counter_## axis
-#define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
+	}
 
 #ifdef LASER
+#define _COUNTER(axis) counter_## axis
+#define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
+#define _GALVO_POS(AXIS) AXIS ##_Galvo_Position
+#define _SPI_TRANSFER asm volatile("nop"); \
+					while (!(SPSR & _BV(SPIF)));
+	/*
+#define APPLY_GALVO_MOVEMENT(axis, AXIS) \
+		  _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] * step_loops; \
+		  if (_COUNTER(axis) > 0) { \
+		  _COUNTER(axis) -= current_block->step_event_count * step_loops; \
+		  count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] * step_loops; \
+		  AXIS ##_galvo_step(count_direction[_AXIS(AXIS)] * step_loops); \
+		  }
+		  */
+
+	// unrolled the SPI transfer function in order to save on function calls.
+	// current bit shifts are for a 4096 grid.  Will need to update this 
+	// for a dynamic grid system
+
 #define APPLY_GALVO_MOVEMENT(axis, AXIS) \
           _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] * step_loops; \
           if (_COUNTER(axis) > 0) { \
             _COUNTER(axis) -= current_block->step_event_count * step_loops; \
             count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] * step_loops; \
-            AXIS ##_galvo_step(count_direction[_AXIS(AXIS)] * step_loops); \
-		            }
+			_GALVO_POS(AXIS) += count_direction[_AXIS(AXIS)] * step_loops; \
+			if (_GALVO_POS(AXIS) > GRID_SIZE) { \
+				_GALVO_POS(AXIS) = GRID_SIZE; \
+							} \
+			WRITE(GALVO_SS_PIN, LOW); \
+			SPDR = 3 << 4; \
+			_SPI_TRANSFER \
+			SPDR = _GALVO_POS(AXIS) >> 4; \
+			_SPI_TRANSFER \
+			SPDR = _GALVO_POS(AXIS) << 4; \
+			_SPI_TRANSFER \
+			WRITE(GALVO_SS_PIN, HIGH); \
+		  }
 	 APPLY_GALVO_MOVEMENT(x, X);
 	 APPLY_GALVO_MOVEMENT(y, Y);
+	
 #endif
 
 
@@ -804,6 +831,7 @@ ISR(TIMER1_COMPA_vect) {
       plan_discard_current_block();
     }
   }
+  WRITE(STEP_TRIGGER, LOW);
 }
 
 #ifdef ADVANCE
@@ -1234,8 +1262,8 @@ void quickStop() {
 #ifdef LASER
   void set_galvo_pos(unsigned long X, unsigned long Y)
   {
-	  Galvo_WorldXPosition = X;
-	  Galvo_WorldYPosition = Y;
+	  X_Galvo_Position = X;
+	  Y_Galvo_Position = Y;
   }
 
   FORCE_INLINE void move_galvo(unsigned int axis, unsigned short value)
@@ -1274,9 +1302,9 @@ void quickStop() {
 
   void X_galvo_step(int step_dir)
   {
-	  Galvo_WorldXPosition += step_dir;
-	  unsigned short s = (unsigned short)Galvo_WorldXPosition;
-	  if (Galvo_WorldXPosition > GRID_SIZE)
+	  X_Galvo_Position += step_dir;
+	  unsigned short s = (unsigned short)X_Galvo_Position;
+	  if (X_Galvo_Position > GRID_SIZE)
 	  {
 		  s = GRID_SIZE;
 	  }
@@ -1285,9 +1313,9 @@ void quickStop() {
 
   void Y_galvo_step(int step_dir)
   {
-	  Galvo_WorldYPosition += step_dir;
-	  unsigned short s = (unsigned short)Galvo_WorldYPosition;
-	  if (Galvo_WorldYPosition > GRID_SIZE)
+	  Y_Galvo_Position += step_dir;
+	  unsigned short s = (unsigned short)Y_Galvo_Position;
+	  if (Y_Galvo_Position > GRID_SIZE)
 	  {
 		  s = GRID_SIZE;
 	  }
