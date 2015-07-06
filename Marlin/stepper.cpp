@@ -75,6 +75,7 @@ static long acceleration_time, deceleration_time;
 //static unsigned long accelerate_until, decelerate_after, acceleration_rate, initial_rate, final_rate, nominal_rate;
 static unsigned short acc_step_rate; // needed for deceleration start point
 static char step_loops;
+static unsigned int step_shift;
 static unsigned short OCR1A_nominal;
 static unsigned short step_loops_nominal;
 volatile unsigned long X_Galvo_Position;
@@ -334,13 +335,16 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
   if (step_rate > 20000) { // If steprate > 20kHz >> step 4 times
     step_rate = (step_rate >> 2) & 0x3fff;
     step_loops = 4;
+	step_shift = 2;
   }
   else if (step_rate > 10000) { // If steprate > 10kHz >> step 2 times
     step_rate = (step_rate >> 1) & 0x7fff;
     step_loops = 2;
+	step_shift = 1;
   }
   else {
     step_loops = 1;
+	step_shift = 0;
   }
 
   if (step_rate < (F_CPU / 500000)) step_rate = (F_CPU / 500000);
@@ -502,11 +506,21 @@ ISR(TIMER1_COMPA_vect) {
 	  // Laser - Continuous Firing Mode
 
 	  if (current_block->laser_status == LASER_ON) {
-		  laser_fire(current_block->laser_intensity);
+#ifdef INVERT_LASER
+		  WRITE(LASER_FIRING_PIN, LOW);
+#else 
+		  WRITE(LASER_FIRING_PIN, HIGH);
+#endif
+		  //laser_fire(current_block->laser_intensity);
 	  }
 
 	  if (current_block->laser_status == LASER_OFF) {
-		  laser_extinguish();
+#ifdef INVERT_LASER
+		  WRITE(LASER_FIRING_PIN, LOW);
+#else 
+		  WRITE(LASER_FIRING_PIN, HIGH);
+#endif
+		  //laser_extinguish();
 	  }
 #endif
     // Check endstops
@@ -678,24 +692,24 @@ ISR(TIMER1_COMPA_vect) {
 					while (!(SPSR & _BV(SPIF)));
 	/*
 #define APPLY_GALVO_MOVEMENT(axis, AXIS) \
-		  _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] * step_loops; \
+		  _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] << step_shift; \
 		  if (_COUNTER(axis) > 0) { \
-		  _COUNTER(axis) -= current_block->step_event_count * step_loops; \
-		  count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] * step_loops; \
-		  AXIS ##_galvo_step(count_direction[_AXIS(AXIS)] * step_loops); \
+		  _COUNTER(axis) -= current_block->step_event_count << step_shift; \
+		  count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] << step_shift; \
+		  AXIS ##_galvo_step(count_direction[_AXIS(AXIS)] << step_shift); \
 		  }
-		  */
-
+		  
+	*/
 	// unrolled the SPI transfer function in order to save on function calls.
 	// current bit shifts are for a 4096 grid.  Will need to update this 
 	// for a dynamic grid system
-
+	
 #define APPLY_GALVO_MOVEMENT(axis, AXIS) \
-          _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] * step_loops; \
+          _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] << step_shift; \
           if (_COUNTER(axis) > 0) { \
-            _COUNTER(axis) -= current_block->step_event_count * step_loops; \
-            count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] * step_loops; \
-			_GALVO_POS(AXIS) += count_direction[_AXIS(AXIS)] * step_loops; \
+            _COUNTER(axis) -= current_block->step_event_count << step_shift; \
+            count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] << step_shift; \
+			_GALVO_POS(AXIS) += count_direction[_AXIS(AXIS)] << step_shift; \
 			if (_GALVO_POS(AXIS) > GRID_SIZE) { \
 				_GALVO_POS(AXIS) = GRID_SIZE; \
 							} \
@@ -708,8 +722,9 @@ ISR(TIMER1_COMPA_vect) {
 			_SPI_TRANSFER \
 			WRITE(GALVO_SS_PIN, HIGH); \
 		  }
-	 APPLY_GALVO_MOVEMENT(x, X);
-	 APPLY_GALVO_MOVEMENT(y, Y);
+		  
+	APPLY_GALVO_MOVEMENT(x, X);
+	APPLY_GALVO_MOVEMENT(y, Y);
 	
 #endif
 
