@@ -50,33 +50,38 @@ static uint8_t spiRec() {
 static inline __attribute__((always_inline))
 void spiRead(uint8_t* buf, uint16_t nbyte) {
   if (nbyte-- == 0) return;
-  SPDR = 0XFF;
-  for (uint16_t i = 0; i < nbyte; i++) {
+  for (uint16_t i = 0; i <= nbyte; i++) {
+	  CRITICAL_SECTION_START
+	SPDR = 0XFF;
     while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
     buf[i] = SPDR;
-    SPDR = 0XFF;
+    CRITICAL_SECTION_END
   }
-  while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
-  buf[nbyte] = SPDR;
 }
 //------------------------------------------------------------------------------
 /** SPI send a byte */
 static void spiSend(uint8_t b) {
+	CRITICAL_SECTION_START
   SPDR = b;
   while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
+  CRITICAL_SECTION_END
 }
 //------------------------------------------------------------------------------
 /** SPI send block - only one call so force inline */
 static inline __attribute__((always_inline))
   void spiSendBlock(uint8_t token, const uint8_t* buf) {
-  SPDR = token;
+	CRITICAL_SECTION_START
+	SPDR = token;
+	while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
+	CRITICAL_SECTION_END
   for (uint16_t i = 0; i < 512; i += 2) {
-    while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
+	  CRITICAL_SECTION_START
     SPDR = buf[i];
     while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
     SPDR = buf[i + 1];
+	while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
+	CRITICAL_SECTION_END
   }
-  while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
 }
 //------------------------------------------------------------------------------
 #else  // SOFTWARE_SPI
