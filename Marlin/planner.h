@@ -69,6 +69,10 @@ typedef struct {
   unsigned long laser_intensity; // Laser firing instensity in PWM ticks
   unsigned short x_dac; // translated dac value for the X axis
   unsigned short y_dac; // translated dac value for the Y axis
+  unsigned short x_dac_step;
+  unsigned short y_dac_step;
+  unsigned short x_dac_current;
+  unsigned short y_dac_current;
 
 #endif
   #ifdef BARICUDA

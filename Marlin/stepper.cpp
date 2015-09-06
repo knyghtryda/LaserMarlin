@@ -512,15 +512,17 @@ ISR(TIMER1_COMPA_vect) {
 		  WRITE(LASER_FIRING_PIN, HIGH);
 #endif
 		  //laser_fire(current_block->laser_intensity);
+		  laser.firing = LASER_ON;
 	  }
 
 	  if (current_block->laser_status == LASER_OFF) {
 #ifdef INVERT_LASER
-		  WRITE(LASER_FIRING_PIN, LOW);
+		  WRITE(LASER_FIRING_PIN, HIGH);
 #else 
 		  WRITE(LASER_FIRING_PIN, HIGH);
 #endif
 		  //laser_extinguish();
+		  laser.firing = LASER_OFF;
 	  }
 #endif
     // Check endstops
@@ -689,7 +691,7 @@ ISR(TIMER1_COMPA_vect) {
 #define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
 #define _GALVO_POS(AXIS) AXIS ##_Galvo_Position
 #define _SPI_TRANSFER asm volatile("nop"); \
-					while (!(SPSR & _BV(SPIF)));
+						while (!(SPSR & _BV(SPIF)));
 	/*
 #define APPLY_GALVO_MOVEMENT(axis, AXIS) \
 		  _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] << step_shift; \
@@ -698,27 +700,28 @@ ISR(TIMER1_COMPA_vect) {
 		  count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] << step_shift; \
 		  AXIS ##_galvo_step(count_direction[_AXIS(AXIS)] << step_shift); \
 		  }
-		  
-	*/
+
+		  */
 	// unrolled the SPI transfer function in order to save on function calls.
 	// current bit shifts are for a 4096 grid.  Will need to update this 
 	// for a dynamic grid system
-	
+
 #define APPLY_GALVO_MOVEMENT(axis, AXIS) \
-          _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] << step_shift; \
+          _COUNTER(axis) += current_block->steps[_AXIS(AXIS)]; \
           if (_COUNTER(axis) > 0) { \
-            _COUNTER(axis) -= current_block->step_event_count << step_shift; \
-            count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] << step_shift; \
-			_GALVO_POS(AXIS) += count_direction[_AXIS(AXIS)] << step_shift; \
+            _COUNTER(axis) -= current_block->step_event_count; \
+            count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)]; \
+			_GALVO_POS(AXIS) += count_direction[_AXIS(AXIS)]; \
 			if (_GALVO_POS(AXIS) > GRID_SIZE) { \
 				_GALVO_POS(AXIS) = GRID_SIZE; \
-							} \
+										} \
 			WRITE(GALVO_SS_PIN, LOW); \
-			SPDR = 3 << 4; \
+			SPDR = AXIS ##_AXIS | (3 << 4); \
 			_SPI_TRANSFER \
-			SPDR = _GALVO_POS(AXIS) >> 4; \
+			scaled_value = _GALVO_POS(AXIS) << 5 ;\
+			SPDR = scaled_value >> 8; \
 			_SPI_TRANSFER \
-			SPDR = _GALVO_POS(AXIS) << 4; \
+			SPDR = scaled_value; \
 			_SPI_TRANSFER \
 			WRITE(GALVO_SS_PIN, HIGH); \
 		  }

@@ -89,7 +89,7 @@ Here are some standard links for getting your machine calibrated:
 // Extruder controls laser firing
 #define LASER_EXTRUDER 
 // uncomment this to use inverted logic (high == off, low == on) for laser
-#define INVERT_LASER
+//#define INVERT_LASER
 // uncomment for laser diagnostic output via serial
 //#define LASER_DIAGNOSTICS
 // Number of segments in order to handle mapping.  Adjust based on how
@@ -98,6 +98,8 @@ Here are some standard links for getting your machine calibrated:
 // Distance from final mirror to base of reservoir.  Needs to be accurate in
 // order for calibration to be accurate
 #define LASER_RES_DISTANCE 140
+// size of calibration grid.  The stepping will be width/cal_grid
+#define CAL_GRID 6
 #endif
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
 // You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
@@ -557,8 +559,10 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 #define HOMING_FEEDRATE {50*60, 50*60, 4*60, 0}  // set the homing speeds (mm/min)
 
 // default settings
-#define GRID_SIZE 4096 //The scaled down grid used for the dac_table in order to handle curvature compensation
-#define XY_STEPS_PER_UNIT GRID_SIZE/X_MAX_POS //65535/X_MAX_POS/XY_GALVO_SCALAR
+#define DAC_SIZE 65536
+#define GRID_SIZE 2048 //The scaled down grid used for the dac_table in order to handle curvature compensation
+#define GRID_SCALAR 65536/GRID_SIZE
+#define XY_STEPS_PER_UNIT GRID_SIZE/X_MAX_LENGTH //65535/X_MAX_POS/XY_GALVO_SCALAR
 #define Z_MICROSTEPS 8
 #define Z_STEPS_PER_REV 200
 #define Z_TPM 18/25.4

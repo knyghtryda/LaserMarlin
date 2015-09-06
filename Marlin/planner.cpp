@@ -499,8 +499,8 @@ float junction_deviation = 0.1;
   // Calculate target position in absolute steps
   //this should be done after the wait, because otherwise a M92 code within the gcode disrupts this calculation somehow
   long target[NUM_AXIS];
-  target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
-  target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
+  target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);//lround(x * axis_steps_per_unit[X_AXIS]);
+  target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);//lround(y * axis_steps_per_unit[Y_AXIS]);
   target[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]);     
   target[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
 
@@ -570,6 +570,10 @@ float junction_deviation = 0.1;
   block->laser_status = laser.status;
   block->x_dac = target[X_AXIS];
   block->y_dac = target[Y_AXIS];
+  block->x_dac_current = position[X_AXIS];
+  block->y_dac_current = position[Y_AXIS];
+  block->x_dac_step = GRID_SCALAR;
+  block->y_dac_step = GRID_SCALAR;
 #if LASER_DIAGNOSTICS
   if (block->laser_status == LASER_ON) {
 	  SERIAL_ECHO_START;

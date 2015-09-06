@@ -26,3 +26,5 @@ Marlin/Visual Micro/Configuration.Debug.vmps.xml
 *.sln
 Marlin/Visual Micro/Upload.vmps.xml
 *.new
+Documentation/Logo/Thumbs.db
+Marlin/Visual Micro/Configuration.Release.vmps.xml

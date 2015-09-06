@@ -29,19 +29,19 @@
 #define Y_MIN_PIN          -1//14
 #define Y_MAX_PIN          -1//15
 
-#define Z_STEP_PIN         59//3 //new board pin 59
-#define Z_DIR_PIN          60//4 //new board pin 60
-#define Z_ENABLE_PIN       58//2 //new board pin 58 //62
-#define Z_MIN_PIN          56//15//18
+#define Z_STEP_PIN         46//3 //new board pin 59
+#define Z_DIR_PIN          42//4 //new board pin 60
+#define Z_ENABLE_PIN       48//2 //new board pin 58 //62
+#define Z_MIN_PIN          -1//33
 #define Z_MAX_PIN          -1//19
 
 #define Y2_STEP_PIN        -1//36
 #define Y2_DIR_PIN         -1//34
 #define Y2_ENABLE_PIN      -1//30
 
-#define Z2_STEP_PIN        18//36
-#define Z2_DIR_PIN         17//34
-#define Z2_ENABLE_PIN      19//30
+#define Z2_STEP_PIN        -1//18//36
+#define Z2_DIR_PIN         -1//17//34
+#define Z2_ENABLE_PIN      -1//19//30
 
 #define E0_STEP_PIN        -1//26
 #define E0_DIR_PIN         -1//28
@@ -200,8 +200,8 @@
 #endif
 
 //Open SL Pins
-#define GALVO_SS_PIN		16//53 // new board is 16
-#define LASER_FIRING_PIN	61//56 //New pin is 61
+#define GALVO_SS_PIN		61//53 // new board is 61
+#define LASER_FIRING_PIN	32//56 //New pin is 61
 
   #define SCK_PIN          52
   #define MISO_PIN         50

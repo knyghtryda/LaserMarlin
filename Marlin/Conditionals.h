@@ -296,7 +296,7 @@
    */
   
 #ifdef LASER
-#define MAX_STEP_FREQUENCY 20000
+#define MAX_STEP_FREQUENCY 10000
 #else
 #ifdef CONFIG_STEPPERS_TOSHIBA
 #define MAX_STEP_FREQUENCY 10000 // Max step frequency for Toshiba Stepper Controllers
