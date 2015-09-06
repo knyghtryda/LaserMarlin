@@ -96,7 +96,7 @@
  * G10 - retract filament according to settings of M207
  * G11 - retract recover filament according to settings of M208
  * G28 - Home one or more axes
- * G29 - Detailed Z-Probe, probes the bed at 3 or more points.  Will fail if you haven't homed yet.
+ * G29 - Originally used as bed leveling, now used for calibration for the galvo
  * G30 - Single Z Probe, probes bed at current XY location.
  * G31 - Dock sled (Z_PROBE_SLED only)
  * G32 - Undock sled (Z_PROBE_SLED only)
@@ -383,6 +383,7 @@ bool target_direction;
   float x_length = X_MAX_LENGTH;
   float y_length = Y_MAX_LENGTH;
   float laser_segments_per_second = LASER_SEGMENTS_PER_SECOND;
+  static bool calibration_mode = false;
 #endif
 
 #ifdef SCARA
@@ -2102,7 +2103,6 @@ inline void gcode_G4() {
 
   if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL);
 
-
   while (millis() < codenum) idle();
 }
 
@@ -2237,7 +2237,7 @@ inline void gcode_G28() {
         float mlx = max_length(X_AXIS), mly = max_length(Y_AXIS),
               mlratio = mlx>mly ? mly/mlx : mlx/mly;
 
-        destination[X_AXIS] = 1.5 * mlx * x_axis_home_dir;
+        destination[X_AXIS] = 1.5 * mlx * x_axis_home_dir;d
         destination[Y_AXIS] = 1.5 * mly * home_dir(Y_AXIS);
         feedrate = min(homing_feedrate[X_AXIS], homing_feedrate[Y_AXIS]) * sqrt(mlratio * mlratio + 1);
         line_to_destination();
@@ -2927,7 +2927,129 @@ inline void gcode_G28() {
   #endif //!Z_PROBE_SLED
 
 #endif //ENABLE_AUTO_BED_LEVELING
+	/*
+#ifdef LASER 
+	enum GalvoCalState { GalvoReport, GalvoStart, GalvoNext, GalvoSet };
 
+	inline void gcode_G29() {
+		static int probe_point = -1;
+		GalvoCalState state = code_seen('S') || code_seen('s') ? (GalvoCalState)code_value_short() : GalvoReport;
+		if (state < 0 || state > 3) {
+			SERIAL_PROTOCOLLNPGM("S out of range (0-3).");
+			return;
+		}
+		switch (state) {
+		case GalvoReport:
+			if (mbl.active) {
+				SERIAL_PROTOCOLPGM("Num X,Y: ");
+				SERIAL_PROTOCOL(MESH_NUM_X_POINTS);
+				SERIAL_PROTOCOLCHAR(',');
+				SERIAL_PROTOCOL(MESH_NUM_Y_POINTS);
+				SERIAL_PROTOCOLPGM("\nZ search height: ");
+				SERIAL_PROTOCOL(MESH_HOME_SEARCH_Z);
+				SERIAL_PROTOCOLLNPGM("\nMeasured points:");
+				for (int y = 0; y < MESH_NUM_Y_POINTS; y++) {
+					for (int x = 0; x < MESH_NUM_X_POINTS; x++) {
+						SERIAL_PROTOCOLPGM("  ");
+						SERIAL_PROTOCOL_F(mbl.z_values[y][x], 5);
+					}
+					SERIAL_EOL;
+				}
+			}
+			else
+				SERIAL_PROTOCOLLNPGM("Mesh bed leveling not active.");
+			break;
+
+		case GalvoStart:
+			mbl.reset();
+			probe_point = 0;
+			enqueuecommands_P(PSTR("G28\nG29 S2"));
+			break;
+
+		case GalvoNext:
+			if (probe_point < 0) {
+				SERIAL_PROTOCOLLNPGM("Start mesh probing with \"G29 S1\" first.");
+				return;
+			}
+			if (probe_point == 0) {
+				// Set Z to a positive value before recording the first Z.
+				current_position[Z_AXIS] = MESH_HOME_SEARCH_Z;
+				sync_plan_position();
+			}
+			else {
+				// For others, save the Z of the previous point, then raise Z again.
+				ix = (probe_point - 1) % MESH_NUM_X_POINTS;
+				iy = (probe_point - 1) / MESH_NUM_X_POINTS;
+				if (iy & 1) ix = (MESH_NUM_X_POINTS - 1) - ix; // zig-zag
+				mbl.set_z(ix, iy, current_position[Z_AXIS]);
+				current_position[Z_AXIS] = MESH_HOME_SEARCH_Z;
+				plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], homing_feedrate[X_AXIS] / 60, active_extruder);
+				st_synchronize();
+			}
+			// Is there another point to sample? Move there.
+			if (probe_point < MESH_NUM_X_POINTS * MESH_NUM_Y_POINTS) {
+				ix = probe_point % MESH_NUM_X_POINTS;
+				iy = probe_point / MESH_NUM_X_POINTS;
+				if (iy & 1) ix = (MESH_NUM_X_POINTS - 1) - ix; // zig-zag
+				current_position[X_AXIS] = mbl.get_x(ix);
+				current_position[Y_AXIS] = mbl.get_y(iy);
+				plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], homing_feedrate[X_AXIS] / 60, active_extruder);
+				st_synchronize();
+				probe_point++;
+			}
+			else {
+				// After recording the last point, activate the mbl and home
+				SERIAL_PROTOCOLLNPGM("Mesh probing done.");
+				probe_point = -1;
+				mbl.active = 1;
+				enqueuecommands_P(PSTR("G28"));
+			}
+			break;
+
+		case GalvoSet:
+			if (code_seen('X') || code_seen('x')) {
+				ix = code_value_long() - 1;
+				if (ix < 0 || ix >= MESH_NUM_X_POINTS) {
+					SERIAL_PROTOCOLPGM("X out of range (1-" STRINGIFY(MESH_NUM_X_POINTS) ").\n");
+					return;
+				}
+			}
+			else {
+				SERIAL_PROTOCOLPGM("X not entered.\n");
+				return;
+			}
+			if (code_seen('Y') || code_seen('y')) {
+				iy = code_value_long() - 1;
+				if (iy < 0 || iy >= MESH_NUM_Y_POINTS) {
+					SERIAL_PROTOCOLPGM("Y out of range (1-" STRINGIFY(MESH_NUM_Y_POINTS) ").\n");
+					return;
+				}
+			}
+			else {
+				SERIAL_PROTOCOLPGM("Y not entered.\n");
+				return;
+			}
+			if (code_seen('Z') || code_seen('z')) {
+				z = code_value();
+			}
+			else {
+				SERIAL_PROTOCOLPGM("Z not entered.\n");
+				return;
+			}
+			mbl.z_values[iy][ix] = z;
+
+		} // switch(state)
+		SERIAL_PROTOCOLLNPGM("Laser Galvo Calibration");
+		SERIAL_PROTOCOLLNPGM("Homing Z axis");
+		HOMEAXIS(Z);
+		SERIAL_PROTOCOLLNPGM("Raising to max height");
+		destination[Z_AXIS] = max_length(Z_AXIS);
+		feedrate = homing_feedrate[Z_AXIS];
+		line_to_destination();
+		st_synchronize();
+	}
+#endif
+	*/
 /**
  * G92: Set current position to given X Y Z E
  */
@@ -2987,7 +3109,6 @@ inline void gcode_G92() {
     st_synchronize();
     refresh_cmd_timeout();
     if (codenum > 0) {
-
       codenum += previous_cmd_ms;  // wait until this time for a click
       while (millis() < codenum && !lcd_clicked()) idle();
       lcd_ignore_click(false);
@@ -4581,9 +4702,6 @@ inline void gcode_M303() {
   int c = code_seen('C') ? code_value_short() : 5;
   float temp = code_seen('S') ? code_value() : (e < 0 ? 70.0 : 150.0);
   PID_autotune(temp, e, c);
-  // Suppress a line mismatch error
-  gcode_LastN += 1;
-  FlushSerialRequestResend();
 }
 #endif
 
@@ -5164,6 +5282,14 @@ inline void gcode_M503() {
 	  laser_extinguish();
   }
 #endif
+#ifdef LASER
+  /* Modifies default laser parameters */
+  inline void gcode_M655() {
+	  if (code_seen('H')) {
+		  /* Code here to adjust height */
+	  }
+  }
+#endif
 /**
  * M907: Set digital trimpot motor current using axis codes X, Y, Z, E, B, S
  */
@@ -5380,7 +5506,6 @@ void process_next_command() {
   // Get the command code, which must be G, M, or T
   char command_code = *current_command;
 
-
   // The code must have a numeric value
   bool code_is_good = (current_command[1] >= '0' && current_command[1] <= '9');
 
@@ -5460,7 +5585,6 @@ void process_next_command() {
 
       #endif // ENABLE_AUTO_BED_LEVELING
 
-
       case 90: // G90
         relative_mode = false;
         break;
@@ -5471,7 +5595,6 @@ void process_next_command() {
       case 92: // G92
         gcode_G92();
         break;
-
     }
     break;
 
@@ -5537,7 +5660,7 @@ void process_next_command() {
           gcode_M48();
           break;
       #endif // ENABLE_AUTO_BED_LEVELING && Z_PROBE_REPEATABILITY_TEST
-#ifndef LASER
+#if HAS_TEMP_0
       case 104: // M104: Set Extruder Target Temp
         gcode_M104();
         break;
@@ -5878,11 +6001,14 @@ void process_next_command() {
           break;
       #endif // DUAL_X_CARRIAGE
 #ifdef LASER
-		case 650:
+		case 650: // Turn on Laser
 			gcode_M650();
 			break;
-		case 651:
+		case 651: // Turn off Laser
 			gcode_M651();
+			break;
+		case 655:
+			gcode_M655();
 			break;
 #endif
       case 907: // M907 Set digital trimpot motor current using axis codes.
@@ -6702,7 +6828,8 @@ void kill(const char *lcd_msg) {
       st_synchronize();
     }
   }
-#endif
+
+#endif // FILAMENT_RUNOUT_SENSOR
 
 #ifdef FAST_PWM_FAN
 
