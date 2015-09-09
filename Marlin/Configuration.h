@@ -98,8 +98,8 @@ Here are some standard links for getting your machine calibrated:
 // Distance from final mirror to base of reservoir.  Needs to be accurate in
 // order for calibration to be accurate
 #define LASER_RES_DISTANCE 140
-// size of calibration grid.  The stepping will be width/cal_grid
-#define CAL_GRID 6
+// Enables galvo calibration
+//#define GALVO_CALIBRATION
 #endif
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
 // You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
@@ -419,9 +419,19 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 #define X_MIN_POS 0
 #define Y_MIN_POS 0
 #define Z_MIN_POS 0
-#define X_MAX_POS 150
-#define Y_MAX_POS 150
+#define X_MAX_POS 140
+#define Y_MAX_POS 140
 #define Z_MAX_POS 140
+
+// Number of calibration grid points per axis.  The stepping will be MAX_LENGTH/MESH_NUM_X_POINTS
+#ifdef GALVO_CALIBRATION
+#define MESH_NUM_X_POINTS 6
+#define MESH_NUM_Y_POINTS 6
+#define MESH_MIN_X 0
+#define MESH_MIN_Y 0
+#define MESH_MAX_X X_MAX_POS
+#define MESH_MAX_Y Y_MAX_POS
+#endif
 
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
 #define Y_MAX_LENGTH (Y_MAX_POS - Y_MIN_POS)
