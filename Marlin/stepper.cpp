@@ -519,7 +519,7 @@ ISR(TIMER1_COMPA_vect) {
 #ifdef INVERT_LASER
 		  WRITE(LASER_FIRING_PIN, HIGH);
 #else 
-		  WRITE(LASER_FIRING_PIN, HIGH);
+		  WRITE(LASER_FIRING_PIN, LOW);
 #endif
 		  //laser_extinguish();
 		  laser.firing = LASER_OFF;
