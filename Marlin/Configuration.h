@@ -97,7 +97,7 @@ Here are some standard links for getting your machine calibrated:
 #define LASER_SEGMENTS_PER_SECOND 100
 // Distance from final mirror to base of reservoir.  Needs to be accurate in
 // order for calibration to be accurate
-#define LASER_RES_DISTANCE 140
+#define LASER_RES_DISTANCE 143
 // Enables galvo calibration
 //#define GALVO_CALIBRATION
 #endif
@@ -573,9 +573,9 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 #define GRID_SIZE 2048 //The scaled down grid used for the dac_table in order to handle curvature compensation
 #define GRID_SCALAR 65536/GRID_SIZE
 #define XY_STEPS_PER_UNIT GRID_SIZE/X_MAX_LENGTH //65535/X_MAX_POS/XY_GALVO_SCALAR
-#define Z_MICROSTEPS 8
+#define Z_MICROSTEPS 16
 #define Z_STEPS_PER_REV 200
-#define Z_TPM 18/25.4
+#define Z_TPM 0.70866141732 //  18/25.4
 #define Z_STEPS_PER_UNIT Z_STEPS_PER_REV*Z_MICROSTEPS*Z_TPM
 #define DEFAULT_AXIS_STEPS_PER_UNIT   {XY_STEPS_PER_UNIT,XY_STEPS_PER_UNIT,Z_STEPS_PER_UNIT,500}  // default steps per unit for Ultimaker
 #define DEFAULT_MAX_FEEDRATE          {1000, 1000, 6, 25}    // (mm/sec) Note that maximum Z speed is currently ~6 mm/sec before hardware limitations hit
