@@ -80,6 +80,15 @@ float max_e_jerk;
 float mintravelfeedrate;
 unsigned long axis_steps_per_sqr_second[NUM_AXIS];
 
+// Galvo related variables
+unsigned int steps = CAL_GRID_SIZE;
+float g_scale[2] = { GALVO_X_SCALE, GALVO_Y_SCALE };
+unsigned int g_center[2] = { GALVO_CENTER, GALVO_CENTER };
+unsigned int g_min[2] = { g_center[X_AXIS] - 0xFFFF / 2 * g_scale[X_AXIS], g_center[Y_AXIS] - 0xFFFF / 2 * g_scale[Y_AXIS] };
+unsigned int g_max[2] = { g_center[X_AXIS] + 0xFFFF / 2 * g_scale[X_AXIS], g_center[Y_AXIS] + 0xFFFF / 2 * g_scale[Y_AXIS] };
+unsigned int g_size[2] = { g_max[X_AXIS] - g_min[X_AXIS], g_max[Y_AXIS] - g_min[Y_AXIS] };
+unsigned int g_position[2] = { g_min[X_AXIS], g_min[Y_AXIS] };
+
 #ifdef ENABLE_AUTO_BED_LEVELING
   // Transform required to compensate for bed level
   matrix_3x3 plan_bed_level_matrix = {
@@ -110,6 +119,7 @@ volatile unsigned char block_buffer_tail;           // Index of the block to pro
 
 // The current position of the tool in absolute steps
 long position[NUM_AXIS];               // Rescaled from extern when axis_steps_per_unit are changed by gcode
+long position_mm[NUM_AXIS];				// Needed for galvos
 static float previous_speed[NUM_AXIS]; // Speed of previous path line segment
 static float previous_nominal_speed;   // Nominal speed of previous path line segment
 
@@ -499,8 +509,8 @@ float junction_deviation = 0.1;
   // Calculate target position in absolute steps
   //this should be done after the wait, because otherwise a M92 code within the gcode disrupts this calculation somehow
   long target[NUM_AXIS];
-  target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);//lround(x * axis_steps_per_unit[X_AXIS]);
-  target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);//lround(y * axis_steps_per_unit[Y_AXIS]);
+  target[X_AXIS] = g_min[X_AXIS] + g_size[X_AXIS] * x / X_MAX_POS;//lround(x * axis_steps_per_unit[X_AXIS]);
+  target[Y_AXIS] = g_min[Y_AXIS] + g_size[Y_AXIS] * y / Y_MAX_POS;//lround(y * axis_steps_per_unit[Y_AXIS]);
   target[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]);     
   target[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
 
@@ -508,18 +518,6 @@ float junction_deviation = 0.1;
         dy = target[Y_AXIS] - position[Y_AXIS],
         dz = target[Z_AXIS] - position[Z_AXIS],
         de = target[E_AXIS] - position[E_AXIS];
-
-#ifdef LASER_EXTRUDER
-  if (de > 0 && (labs(dx) > 0 || labs(dy) > 0))
-	  //&& current_position[Z_AXIS] == destination[Z_AXIS] // Disabling Z check on laser fire
-	   {
-	  laser.status = LASER_ON;
-	  laser.fired = LASER_FIRE_E;
-  }
-  if (de == 0){
-	  laser.status = LASER_OFF;
-  }
-#endif // LASER_FIRE_E
 
   #ifdef PREVENT_DANGEROUS_EXTRUDE
     if (de) {
@@ -567,7 +565,17 @@ float junction_deviation = 0.1;
 
 #ifdef LASER
   block->laser_intensity = 255;
-  block->laser_status = laser.status;
+#ifdef LASER_EXTRUDER
+  if (de > 0 && (labs(dx) > 0 || labs(dy) > 0))
+	  //&& current_position[Z_AXIS] == destination[Z_AXIS] // Disabling Z check on laser fire
+  {
+	  block->laser_status = LASER_ON;
+  }
+  if (de <= 0) {
+	  block->laser_status = LASER_OFF;
+  }
+#endif
+  
   block->x_dac = target[X_AXIS];
   block->y_dac = target[Y_AXIS];
   block->x_dac_current = position[X_AXIS];
@@ -593,12 +601,12 @@ float junction_deviation = 0.1;
 
   // Compute direction bits for this block 
   uint8_t db = 0;
-  #ifdef COREXY
+  #if defined(COREXY)
     if (dx < 0) db |= BIT(X_HEAD); // Save the real Extruder (head) direction in X Axis
     if (dy < 0) db |= BIT(Y_HEAD); // ...and Y
     if (dx + dy < 0) db |= BIT(A_AXIS); // Motor A direction
     if (dx - dy < 0) db |= BIT(B_AXIS); // Motor B direction
-  #else
+  #elif !defined(LASER)
     if (dx < 0) db |= BIT(X_AXIS);
     if (dy < 0) db |= BIT(Y_AXIS); 
   #endif
@@ -700,13 +708,17 @@ float junction_deviation = 0.1;
    * So we need to create other 2 "AXIS", named X_HEAD and Y_HEAD, meaning the real displacement of the Head. 
    * Having the real displacement of the head, we can calculate the total movement length and apply the desired speed.
    */ 
-  #ifdef COREXY
+  #if defined(COREXY)
     float delta_mm[6];
     delta_mm[X_HEAD] = dx / axis_steps_per_unit[A_AXIS];
     delta_mm[Y_HEAD] = dy / axis_steps_per_unit[B_AXIS];
     delta_mm[A_AXIS] = (dx + dy) / axis_steps_per_unit[A_AXIS];
     delta_mm[B_AXIS] = (dx - dy) / axis_steps_per_unit[B_AXIS];
-  #else
+  #elif defined(LASER)
+	  float delta_mm[4];
+  delta_mm[X_AXIS] = fabs(x - position_mm[X_AXIS]);
+  delta_mm[Y_AXIS] = fabs(y - position_mm[Y_AXIS]);
+	#else
     float delta_mm[4];
     delta_mm[X_AXIS] = dx / axis_steps_per_unit[X_AXIS];
     delta_mm[Y_AXIS] = dy / axis_steps_per_unit[Y_AXIS];
@@ -981,8 +993,10 @@ float junction_deviation = 0.1;
   // Move buffer head
   block_buffer_head = next_buffer_head;
 
-  // Update position
+  // Update positions
   for (int i = 0; i < NUM_AXIS; i++) position[i] = target[i];
+  position_mm[X_AXIS] = x;
+  position_mm[Y_AXIS] = y;
 
   planner_recalculate();
 

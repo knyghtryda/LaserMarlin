@@ -126,7 +126,7 @@
 
 // @section extras
 
-//#define Z_LATE_ENABLE // Enable Z the last moment. Needed if your Z driver overheats.
+#define Z_LATE_ENABLE // Enable Z the last moment. Needed if your Z driver overheats.
 
 // A single Z stepper driver is usually used to drive 2 stepper motors.
 // Uncomment this define to utilize a separate stepper driver for each Z axis motor.

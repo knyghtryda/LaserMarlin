@@ -1,6 +1,8 @@
 #include "Marlin.h"
+#if defined(MESH_BED_LEVELING) || defined(GALVO_CALIBRATION)
 
-#ifdef MESH_BED_LEVELING
+#ifndef MESH_BED_LEVELING_H
+#define MESH_BED_LEVELING_H
 
   #define MESH_X_DIST ((MESH_MAX_X - MESH_MIN_X)/(MESH_NUM_X_POINTS - 1))
   #define MESH_Y_DIST ((MESH_MAX_Y - MESH_MIN_Y)/(MESH_NUM_Y_POINTS - 1))
@@ -51,7 +53,8 @@
       return z0;
     }
   };
-
+#ifdef MESH_BED_LEVELING
   extern mesh_bed_leveling mbl;
-
+#endif
 #endif  // MESH_BED_LEVELING
+#endif

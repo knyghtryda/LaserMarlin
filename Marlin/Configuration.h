@@ -101,6 +101,11 @@ Here are some standard links for getting your machine calibrated:
 // Enables galvo calibration
 //#define GALVO_CALIBRATION
 #endif
+#define CAL_GRID_SIZE 6
+#define GALVO_X_SCALE 0.4
+#define GALVO_Y_SCALE 0.6
+#define GALVO_CENTER 0xFFFF/2
+
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
 // You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
 // #define MACHINE_UUID "00000000-0000-0000-0000-000000000000"
@@ -421,17 +426,7 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 #define Z_MIN_POS 0
 #define X_MAX_POS 140
 #define Y_MAX_POS 140
-#define Z_MAX_POS 140
-
-// Number of calibration grid points per axis.  The stepping will be MAX_LENGTH/MESH_NUM_X_POINTS
-#ifdef GALVO_CALIBRATION
-#define MESH_NUM_X_POINTS 6
-#define MESH_NUM_Y_POINTS 6
-#define MESH_MIN_X 0
-#define MESH_MIN_Y 0
-#define MESH_MAX_X X_MAX_POS
-#define MESH_MAX_Y Y_MAX_POS
-#endif
+#define Z_MAX_POS 143
 
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
 #define Y_MAX_LENGTH (Y_MAX_POS - Y_MIN_POS)
@@ -578,8 +573,8 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 #define Z_TPM 0.70866141732 //  18/25.4
 #define Z_STEPS_PER_UNIT Z_STEPS_PER_REV*Z_MICROSTEPS*Z_TPM
 #define DEFAULT_AXIS_STEPS_PER_UNIT   {XY_STEPS_PER_UNIT,XY_STEPS_PER_UNIT,Z_STEPS_PER_UNIT,500}  // default steps per unit for Ultimaker
-#define DEFAULT_MAX_FEEDRATE          {1000, 1000, 6, 25}    // (mm/sec) Note that maximum Z speed is currently ~6 mm/sec before hardware limitations hit
-#define DEFAULT_MAX_ACCELERATION      {10000,10000,5,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for Skeinforge 40+, for older versions raise them a lot.
+#define DEFAULT_MAX_FEEDRATE          {1000, 1000, 6, 25}    // (mm/sec) Note that maximum Z speed is currently ~6 mm/sec before hardware limitations (torque limit) hit
+#define DEFAULT_MAX_ACCELERATION      {10000,10000,5,10000}    // X, Y, Z, E maximum start speed for accelerated moves. 
 
 #define DEFAULT_ACCELERATION          3000    // X, Y, Z and E acceleration in mm/s^2 for printing moves
 #define DEFAULT_RETRACT_ACCELERATION  3000    // E acceleration in mm/s^2 for retracts
@@ -587,8 +582,8 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 
 // The speed change that does not require acceleration (i.e. the software might assume it can be done instantaneously)
 #define DEFAULT_XYJERK                10000.0    // (mm/sec)
-#define DEFAULT_ZJERK                 5.0     // (mm/sec)
-#define DEFAULT_EJERK                 5.0    // (mm/sec)
+#define DEFAULT_ZJERK                 3.0     // (mm/sec)
+#define DEFAULT_EJERK                 100.0    // (mm/sec)
 
 
 //=============================================================================

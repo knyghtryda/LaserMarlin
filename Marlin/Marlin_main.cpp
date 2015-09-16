@@ -38,8 +38,12 @@
 
 #define SERVO_LEVELING (defined(ENABLE_AUTO_BED_LEVELING) && PROBE_SERVO_DEACTIVATION_DELAY > 0)
 
-#ifdef MESH_BED_LEVELING
+#if defined(MESH_BED_LEVELING) || defined(GALVO_CALIBRATION)
   #include "mesh_bed_leveling.h"
+#endif
+
+#if defined(GALVO_CALIBRATION)
+#include "galvo_calibration.h"
 #endif
 
 #include "ultralcd.h"
@@ -609,7 +613,6 @@ void setup_galvos()
 void setup_laser()
 {
 #if (LASER_FIRING_PIN > -1) 
-	SET_OUTPUT(LASER_FIRING_PIN);
 	laser_init();
 	laser_extinguish();
 #endif  
@@ -5677,10 +5680,11 @@ void process_next_command() {
         gcode_M140();
         break;
 #endif
+#ifndef LASER
       case 105: // M105: Read current temperature
         gcode_M105();
-        return; // "ok" already printed
-
+        break; // "ok" already printed
+#endif
 #if HAS_TEMP_0
       case 109: // M109: Wait for temperature
         gcode_M109();
@@ -6178,7 +6182,7 @@ void clamp_to_software_endstops(float target[3]) {
 
 #endif // DELTA
 
-#ifdef MESH_BED_LEVELING
+#if defined(MESH_BED_LEVELING) || defined(GALVO_CALIBRATION)
 
 // This function is used to split lines on mesh borders so each segment is only part of one mesh area
 void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_rate, const uint8_t &extruder, uint8_t x_splits=0xff, uint8_t y_splits=0xff)
@@ -6311,9 +6315,9 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
 #endif // DELTA || SCARA
 
-// Code for doing real time mapping of print space to galvo space
-// in order to compensate for galvo calibration offsets
 #ifdef LASER
+  // Code for doing real time mapping of print space to galvo space
+  // in order to compensate for galvo calibration offsets
   void calculate_galvo(float cartesian[3]) {
 	  galvo[X_AXIS] = cartesian[X_AXIS];
 	  galvo[Y_AXIS] = cartesian[Y_AXIS];
@@ -6408,7 +6412,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
       line_to_destination();
     }
     else {
-      #ifdef MESH_BED_LEVELING
+      #if defined(MESH_BED_LEVELING) || defined(GALVO_CALIBRATION)
         mesh_plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], (feedrate/60)*(feedrate_multiplier/100.0), active_extruder);
         return false;
       #else
