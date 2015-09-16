@@ -506,23 +506,12 @@ ISR(TIMER1_COMPA_vect) {
 	  // Laser - Continuous Firing Mode
 
 	  if (current_block->laser_status == LASER_ON) {
-#ifdef INVERT_LASER
-		  WRITE(LASER_FIRING_PIN, LOW);
-#else 
-		  WRITE(LASER_FIRING_PIN, HIGH);
-#endif
-		  //laser_fire(current_block->laser_intensity);
-		  laser.firing = LASER_ON;
+		  laser_fire(1);
+		  laser.fired = LASER_FIRE_E;
 	  }
-
-	  if (current_block->laser_status == LASER_OFF) {
-#ifdef INVERT_LASER
-		  WRITE(LASER_FIRING_PIN, HIGH);
-#else 
-		  WRITE(LASER_FIRING_PIN, LOW);
-#endif
-		  //laser_extinguish();
-		  laser.firing = LASER_OFF;
+	  // leaves laser on if manually turned on with M650
+	  if (current_block->laser_status == LASER_OFF && !(laser.firing == LASER_ON && laser.fired == LASER_FIRE_M)) {
+		  laser_extinguish();
 	  }
 #endif
     // Check endstops
