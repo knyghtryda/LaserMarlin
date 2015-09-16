@@ -57,13 +57,12 @@ void laser_extinguish();
 #define LASER_OFF 0
 #define LASER_ON 1
 
+#define LASER_FIRE_OFF 0
 #define LASER_FIRE_M 1 // Manual firing
 #define LASER_FIRE_E 2 // fire the laser when the E axis moves
 
 FORCE_INLINE void laser_fire(unsigned long intensity){
   static unsigned long prev_intensity;
-
-  if (laser.firing == LASER_OFF) {
     laser.firing = LASER_ON;
 #if LASER_CONTROL == 1
 #ifdef INVERT_LASER
@@ -82,11 +81,9 @@ FORCE_INLINE void laser_fire(unsigned long intensity){
       SERIAL_ECHOLN("*F");
     #endif
 	  laser.status = LASER_ON;
-  }
 }
 
 FORCE_INLINE void laser_extinguish() {
-  if (laser.firing == LASER_ON) {
     laser.firing = LASER_OFF;
 #if LASER_CONTROL == 1
 #ifdef INVERT_LASER
@@ -104,7 +101,7 @@ FORCE_INLINE void laser_extinguish() {
       SERIAL_ECHOLN("*E");
     #endif
 	  laser.status = LASER_OFF;
-  }
+	  laser.fired = LASER_OFF;
 }
 
 #endif // LASER_H

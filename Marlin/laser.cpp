@@ -27,15 +27,15 @@ laser_t laser;
 
 void laser_init()
 {
-  pinMode(LASER_FIRING_PIN, OUTPUT);
+  SET_OUTPUT(LASER_FIRING_PIN, OUTPUT);
 #ifdef INVERT_LASER
-  //WRITE(LASER_FIRING_PIN, HIGH);
-  analogWrite(LASER_FIRING_PIN, 255);
+  WRITE(LASER_FIRING_PIN, HIGH);
+  //analogWrite(LASER_FIRING_PIN, 255);
 #else
-  analogWrite(LASER_FIRING_PIN, 0);
+  WRITE(LASER_FIRING_PIN, LOW);
+  //analogWrite(LASER_FIRING_PIN, 0);
 #endif
   #if LASER_CONTROL == 3
-    pinMode(LASER_POWER_PIN, OUTPUT);
     analogWrite(LASER_FIRING_PIN, 1);  // let Arduino setup do it's thing to the PWM pin  
 
     TCCR4B = 0x00;  // stop Timer4 clock for register updates
@@ -58,6 +58,7 @@ void laser_init()
   laser.duration = 1000;
   laser.status = LASER_OFF;
   laser.firing = LASER_OFF;
+  laser.fired = LASER_OFF;
   #ifdef MUVE_Z_PEEL
     laser.peel_distance = 2.0;
     laser.peel_speed = 2.0;
