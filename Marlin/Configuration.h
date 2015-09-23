@@ -78,11 +78,6 @@ Here are some standard links for getting your machine calibrated:
 // Enables Laser Galvo controls
 #define LASER
 #ifdef LASER
-// Multiplier for galvo steps.  Speeds up movement.  45 ~= 0.1mm/step
-// This will need to be deprecated
-#define XY_GALVO_SCALAR 32
-// Multiplier for the scaling table in order to correct for curvature
-#define MULT_SCALAR 1
 // Laser control method
 // 1 : Direct PWM control
 #define LASER_CONTROL 1
@@ -97,15 +92,14 @@ Here are some standard links for getting your machine calibrated:
 #define LASER_SEGMENTS_PER_SECOND 100
 // Distance from final mirror to base of reservoir.  Needs to be accurate in
 // order for calibration to be accurate
-#define LASER_RES_DISTANCE 143
-// Enables galvo calibration
-//#define GALVO_CALIBRATION
-#endif
-#define CAL_GRID_SIZE 6
-#define GALVO_X_SCALE 0.4
+#define MIRROR_RES_DISTANCE 143.0
+#define CAL_GRID_SIZE 8
+#define GALVO_X_SCALE 0.6
 #define GALVO_Y_SCALE 0.6
 #define GALVO_CENTER 0xFFFF/2
-
+// distance between the two mirrors
+#define E_DISTANCE 7.0
+#endif
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
 // You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
 // #define MACHINE_UUID "00000000-0000-0000-0000-000000000000"
@@ -424,9 +418,9 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 #define X_MIN_POS 0
 #define Y_MIN_POS 0
 #define Z_MIN_POS 0
-#define X_MAX_POS 140
-#define Y_MAX_POS 140
-#define Z_MAX_POS 143
+#define X_MAX_POS 140.0
+#define Y_MAX_POS 140.0
+#define Z_MAX_POS 143.0
 
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
 #define Y_MAX_LENGTH (Y_MAX_POS - Y_MIN_POS)
@@ -564,10 +558,8 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 #define HOMING_FEEDRATE {50*60, 50*60, 4*60, 0}  // set the homing speeds (mm/min)
 
 // default settings
-#define DAC_SIZE 65536
-#define GRID_SIZE 2048 //The scaled down grid used for the dac_table in order to handle curvature compensation
-#define GRID_SCALAR 65536/GRID_SIZE
-#define XY_STEPS_PER_UNIT GRID_SIZE/X_MAX_LENGTH //65535/X_MAX_POS/XY_GALVO_SCALAR
+#define DAC_SIZE 65535
+#define XY_STEPS_PER_UNIT DAC_SIZE/X_MAX_LENGTH // UNUSED, but here just as a reference point
 #define Z_MICROSTEPS 16
 #define Z_STEPS_PER_REV 200
 #define Z_TPM 0.70866141732 //  18/25.4
