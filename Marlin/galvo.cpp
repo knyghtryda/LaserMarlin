@@ -3,7 +3,6 @@
 // Galvo related global variables
 const float min_step_size = X_MAX_LENGTH / (float)0xFFFF;
 const float max_steps_per_unit = 1.0 / min_step_size;
-float step_size[2] = { X_MAX_LENGTH / CAL_GRID_SIZE, Y_MAX_LENGTH / CAL_GRID_SIZE };
 unsigned const int steps = CAL_GRID_SIZE;
 unsigned const int points = steps + 1;
 const unsigned int center = 0xFFFF / 2;
@@ -11,7 +10,8 @@ const unsigned int center = 0xFFFF / 2;
 //Structure to hold an x/y offset per calibration point
 struct offset offsets[points][points];
 
-//The scale of the full grid with respect to full DAC space (0x0000 to 0xFFFF)
+// The scale of the full grid with respect to full DAC space (0x0000 to 0xFFFF)
+// This is used to initially populate x_min and x_max
 float g_scale[2] = {
 	GALVO_X_SCALE,
 	GALVO_Y_SCALE
@@ -44,19 +44,23 @@ unsigned int g_size[2] = {
 	g_max[Y_AXIS] - g_min[Y_AXIS]
 };
 
-//The calculated steps per mm (unrelated to printing steps per unit)
-int steps_per_mm = g_size[X_AXIS] / (int)X_MAX_LENGTH;
-
 //The distance between each calibration point
 unsigned int cal_step_size[2] = {
 	g_size[X_AXIS] / steps,
 	g_size[Y_AXIS] / steps
 };
 
+// The calculated steps per mm (unrelated to printing steps per unit)
+// This is used to calculate z_size and e
+float steps_per_mm[2] = {
+						(float)g_size[X_AXIS] / (float)X_MAX_POS,
+						(float)g_size[Y_AXIS] / (float)Y_MAX_POS
+						};
+
 //The distance between the print bed and last galvo mirror expressed in steps
 unsigned int z_size[2] = {
-	(unsigned int)((float)(Z_MAX_POS / Y_MAX_POS) * (float)g_size[X_AXIS]),
-	(unsigned int)((float)(Z_MAX_POS / Y_MAX_POS) * (float)g_size[Y_AXIS])
+	(unsigned int)(Z_MAX_POS * steps_per_mm[X_AXIS]),
+	(unsigned int)(Z_MAX_POS * steps_per_mm[Y_AXIS])
 };
 
 //The max theta (per axis) of the galvo as calculated by the size of the print area
@@ -68,8 +72,10 @@ float t_max[2] = {
 	(float)(g_size[Y_AXIS] / 2.0) / t0_max
 };
 
-//The distance between the mirrors in DAC steps
-const int e = E_DISTANCE * steps_per_mm;
+// The distance between the mirrors in DAC steps.  Using X axis as this distance 
+// is the imaginary extension of the Z axis between the second mirror and the first
+// which means it would be part of the X/Z coordinate system
+const unsigned int e = E_DISTANCE * steps_per_mm[X_AXIS];
 
 //Global galvo position. 
 unsigned int g_position[2] = { g_min[X_AXIS], g_min[Y_AXIS] };
@@ -170,7 +176,7 @@ void apply_offset(struct coord * val) {
 	q11.y = offsets[xi1][yi1].y;
 
 	// Really ugly bilinear equation from wikipedia...
-	// May not actually be fast after all
+	// Not fast, but currently only used during planner phase
 	x = x >> 4;
 	y = y >> 4;
 	a0 = (x1 - x) * (y1 - y);
@@ -198,9 +204,14 @@ void abs_galvo_position(struct coord * val, float x, float y) {
 	unsigned int y_tmp = g_min[Y_AXIS] + g_size[Y_AXIS] * y / max_pos[Y_AXIS];
 	val->x = x_tmp;
 	val->y = y_tmp;
+	//unsigned long elapsed = micros();
 	apply_offset(val);
+	//elapsed = micros() - elapsed;
+	//SERIAL_ECHOPAIR("apply_offset elapsed time: ", elapsed);
+	//SERIAL_ECHOLN("us");
 }
 
+float step_size[2] = { X_MAX_LENGTH / CAL_GRID_SIZE, Y_MAX_LENGTH / CAL_GRID_SIZE };
 float get_x(int i) { return X_MIN_POS + step_size[X_AXIS] * i; }
 float get_y(int i) { return Y_MIN_POS + step_size[Y_AXIS] * i; }
 

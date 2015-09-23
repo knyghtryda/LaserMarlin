@@ -60,6 +60,7 @@
 #ifdef LASER
 #include <SPI.h>
 #include "laser.h"
+#include "galvo.h"
 #else
 #include "temperature.h"
 #endif
@@ -383,7 +384,7 @@ bool target_direction;
 
 #ifdef LASER
   float galvo[3] = { 0 };
-  float laser_res_distance = LASER_RES_DISTANCE;
+  float laser_res_distance = MIRROR_RES_DISTANCE;
   float x_length = X_MAX_LENGTH;
   float y_length = Y_MAX_LENGTH;
   float laser_segments_per_second = LASER_SEGMENTS_PER_SECOND;
@@ -687,6 +688,8 @@ void setup() {
 
   // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
   Config_RetrieveSettings();
+  //computes the calibration offsets.  This will need to be moved into Config_RetrieveSettings
+  compute_calibration_offsets();
   lcd_init();
   _delay_ms(1000);  // wait 1sec to display the splash screen
 #ifndef LASER
@@ -1684,12 +1687,7 @@ static void homeaxis(AxisEnum axis) {
         (axis == X_AXIS) ? x_home_dir(active_extruder) :
       #endif
       home_dir(axis);
-#ifdef LASER
-	current_position[X_AXIS] = 0;
-	current_position[Y_AXIS] = 0;
-	set_galvo_pos(0, 0);
-	move_galvos(0, 0);
-#endif
+
     // Set the axis position as setup for the move
     current_position[axis] = 0;
     sync_plan_position();
@@ -2265,7 +2263,7 @@ inline void gcode_G28() {
       }
 
     #endif // QUICK_HOME
-
+#ifndef LASER
     #ifdef HOME_Y_BEFORE_X
       // Home Y
       if (home_all_axis || homeY) HOMEAXIS(Y);
@@ -2294,7 +2292,7 @@ inline void gcode_G28() {
       // Home Y
       if (home_all_axis || homeY) HOMEAXIS(Y);
     #endif
-
+#endif
     // Home Z last if homing towards the bed
     #if Z_HOME_DIR < 0
 
@@ -6248,6 +6246,71 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
   mesh_plan_buffer_line(x, y, z, e, feed_rate, extruder, x_splits, y_splits);
 }
 #endif  // MESH_BED_LEVELING
+
+#ifdef LASER
+//custom plan buffer line for galvos.  Used to split lines on grid just like for mesh.
+void galvo_plan_buffer_line(float x, float y, float z, const float e, float feed_rate, const uint8_t &extruder, uint8_t x_splits = 0xff, uint8_t y_splits = 0xff)
+{
+	int pix = select_x_index(current_position[X_AXIS]);
+	int piy = select_y_index(current_position[Y_AXIS]);
+	int ix = select_x_index(x);
+	int iy = select_y_index(y);
+	pix = min(pix, steps - 1);
+	piy = min(piy, steps - 1);
+	ix = min(ix, steps - 1);
+	iy = min(iy, steps - 1);
+	if (pix == ix && piy == iy) {
+		// Start and end on same mesh square
+		plan_buffer_line(x, y, z, e, feed_rate, extruder);
+		set_current_to_destination();
+		return;
+	}
+	float nx, ny, ne, normalized_dist;
+	if (ix > pix && (x_splits)& BIT(ix)) {
+		nx = get_x(ix);
+		normalized_dist = (nx - current_position[X_AXIS]) / (x - current_position[X_AXIS]);
+		ny = current_position[Y_AXIS] + (y - current_position[Y_AXIS]) * normalized_dist;
+		ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
+		x_splits ^= BIT(ix);
+}
+	else if (ix < pix && (x_splits)& BIT(pix)) {
+		nx = get_x(pix);
+		normalized_dist = (nx - current_position[X_AXIS]) / (x - current_position[X_AXIS]);
+		ny = current_position[Y_AXIS] + (y - current_position[Y_AXIS]) * normalized_dist;
+		ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
+		x_splits ^= BIT(pix);
+	}
+	else if (iy > piy && (y_splits)& BIT(iy)) {
+		ny = get_y(iy);
+		normalized_dist = (ny - current_position[Y_AXIS]) / (y - current_position[Y_AXIS]);
+		nx = current_position[X_AXIS] + (x - current_position[X_AXIS]) * normalized_dist;
+		ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
+		y_splits ^= BIT(iy);
+	}
+	else if (iy < piy && (y_splits)& BIT(piy)) {
+		ny = get_y(piy);
+		normalized_dist = (ny - current_position[Y_AXIS]) / (y - current_position[Y_AXIS]);
+		nx = current_position[X_AXIS] + (x - current_position[X_AXIS]) * normalized_dist;
+		ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
+		y_splits ^= BIT(piy);
+	}
+	else {
+		// Already split on a border
+		plan_buffer_line(x, y, z, e, feed_rate, extruder);
+		set_current_to_destination();
+		return;
+	}
+	// Do the split and look for more borders
+	destination[X_AXIS] = nx;
+	destination[Y_AXIS] = ny;
+	destination[E_AXIS] = ne;
+	galvo_plan_buffer_line(nx, ny, z, ne, feed_rate, extruder, x_splits, y_splits);
+	destination[X_AXIS] = x;
+	destination[Y_AXIS] = y;
+	destination[E_AXIS] = e;
+	galvo_plan_buffer_line(x, y, z, e, feed_rate, extruder, x_splits, y_splits);
+}
+#endif
 
 #ifdef PREVENT_DANGEROUS_EXTRUDE
 

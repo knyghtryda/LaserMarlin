@@ -483,6 +483,7 @@ float junction_deviation = 0.1;
   void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed_rate, const uint8_t &extruder)
 #endif  // ENABLE_AUTO_BED_LEVELING
 {
+	//unsigned long elapsed = micros();
   // Calculate the buffer head after we push this byte
   int next_buffer_head = next_block_index(block_buffer_head);
 
@@ -531,6 +532,7 @@ float junction_deviation = 0.1;
   unsigned long g_steps[2] = { fabs(dmx * axis_steps_per_unit[X_AXIS]), fabs(dmy * axis_steps_per_unit[Y_AXIS]) };
   // The size of each step in DAC units
   unsigned int g_step_size[2] = { dx / g_steps[X_AXIS], dy / g_steps[Y_AXIS] };
+  /*
   SERIAL_ECHO_START;
   SERIAL_ECHOPAIR("Total Movement distance : ", g_dist);
   SERIAL_EOL;
@@ -575,7 +577,7 @@ float junction_deviation = 0.1;
   SERIAL_ECHO((unsigned long)target[Y_AXIS]);
   SERIAL_ECHOLN(")");
   SERIAL_EOL;
-
+  */
 #endif
 
   #ifdef PREVENT_DANGEROUS_EXTRUDE
@@ -793,15 +795,11 @@ float junction_deviation = 0.1;
   delta_mm[Z_AXIS] = dz / axis_steps_per_unit[Z_AXIS];
   delta_mm[E_AXIS] = (de / axis_steps_per_unit[E_AXIS]) * volumetric_multiplier[extruder] * extruder_multiplier[extruder] / 100.0;
 
-  if ( block->steps[Z_AXIS] <= dropsegments) {
+  if (block->steps[Z_AXIS] <= dropsegments && fabs(dz) > 0) {
     block->millimeters = fabs(delta_mm[E_AXIS]);
   } 
   else {
-	  block->millimeters =
-#ifdef LASER
-		  g_dist;
-#else
-		sqrt(
+	  block->millimeters = sqrt(
       #if defined(COREXY)
         square(delta_mm[X_HEAD]) + square(delta_mm[Y_HEAD])
       #else
@@ -809,7 +807,6 @@ float junction_deviation = 0.1;
       #endif
       + square(delta_mm[Z_AXIS])
     );
-#endif
   }
   float inverse_millimeters = 1.0 / block->millimeters;  // Inverse millimeters to remove multiple divides 
 
@@ -842,7 +839,16 @@ float junction_deviation = 0.1;
 
   block->nominal_speed = block->millimeters * inverse_second; // (mm/sec) Always > 0
   block->nominal_rate = ceil(block->step_event_count * inverse_second); // (step/sec) Always > 0
-
+  /*
+  SERIAL_ECHOPAIR("millimeters = ", block->millimeters);
+  SERIAL_EOL;
+  SERIAL_ECHOPAIR("step event count = ", block->step_event_count);
+  SERIAL_EOL;
+  SERIAL_ECHOPAIR("inverse second = ", inverse_second);
+  SERIAL_EOL;
+  SERIAL_ECHOPAIR("nominal rate = ", block->nominal_rate);
+  SERIAL_EOL;
+  */
   #ifdef FILAMENT_SENSOR
     //FMM update ring buffer used for delay with filament measurements
   
@@ -1071,9 +1077,11 @@ float junction_deviation = 0.1;
   position_mm[Y_AXIS] = y;
 
   planner_recalculate();
-
+  //elapsed = micros() - elapsed;
+  //SERIAL_ECHOPAIR("plan_buffer_line elapsed time: ", elapsed);
+  //SERIAL_ECHOLN("us");
   st_wake_up();
-
+  
 } // plan_buffer_line()
 
 #if defined(ENABLE_AUTO_BED_LEVELING) && !defined(DELTA)

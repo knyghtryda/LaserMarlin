@@ -1,14 +1,6 @@
 /**
- * Arduino Mega with RAMPS v1.3 pin assignments
+ * Resin Board using Atmega2560
  *
- * Applies to the following boards:
- *
- *  RAMPS_13_EFB (Extruder, Fan, Bed)
- *  RAMPS_13_EEB (Extruder, Extruder, Bed)
- *  RAMPS_13_EFF (Extruder, Fan, Fan)
- *  RAMPS_13_EEF (Extruder, Extruder, Fan)
- *
- *  Other pins_MYBOARD.h files may override these defaults
  */
 
 #if !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega2560__)

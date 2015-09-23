@@ -43,8 +43,9 @@ extern unsigned int g_max[2];
 //The calculated total size of the printable space in DAC units
 extern unsigned int g_size[2];
 
-//The calculated steps per mm (unrelated to printing steps per unit)
-extern int steps_per_mm;
+// The calculated steps per mm (unrelated to printing steps per unit)
+// This is used to calculate z_size and e
+extern float steps_per_mm[2];
 
 //The distance between each calibration point
 extern unsigned int cal_step_size[2];
@@ -59,7 +60,7 @@ extern const float t0_max;;
 extern float t_max[2];
 
 //The distance between the mirrors in DAC steps
-extern const int e;
+extern const unsigned int e;
 
 //Global galvo position. 
 extern unsigned int g_position[2];
