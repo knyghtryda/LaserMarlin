@@ -55,6 +55,7 @@
 #include "language.h"
 #ifdef LASER
 #include "laser.h"
+#include "galvo.h"
 #else
 #include "temperature.h"
 #endif
@@ -79,15 +80,6 @@ float max_z_jerk;
 float max_e_jerk;
 float mintravelfeedrate;
 unsigned long axis_steps_per_sqr_second[NUM_AXIS];
-
-// Galvo related variables
-unsigned int steps = CAL_GRID_SIZE;
-float g_scale[2] = { GALVO_X_SCALE, GALVO_Y_SCALE };
-unsigned int g_center[2] = { GALVO_CENTER, GALVO_CENTER };
-unsigned int g_min[2] = { g_center[X_AXIS] - 0xFFFF / 2 * g_scale[X_AXIS], g_center[Y_AXIS] - 0xFFFF / 2 * g_scale[Y_AXIS] };
-unsigned int g_max[2] = { g_center[X_AXIS] + 0xFFFF / 2 * g_scale[X_AXIS], g_center[Y_AXIS] + 0xFFFF / 2 * g_scale[Y_AXIS] };
-unsigned int g_size[2] = { g_max[X_AXIS] - g_min[X_AXIS], g_max[Y_AXIS] - g_min[Y_AXIS] };
-unsigned int g_position[2] = { g_min[X_AXIS], g_min[Y_AXIS] };
 
 #ifdef ENABLE_AUTO_BED_LEVELING
   // Transform required to compensate for bed level
@@ -119,7 +111,7 @@ volatile unsigned char block_buffer_tail;           // Index of the block to pro
 
 // The current position of the tool in absolute steps
 long position[NUM_AXIS];               // Rescaled from extern when axis_steps_per_unit are changed by gcode
-long position_mm[NUM_AXIS];				// Needed for galvos
+static float position_mm[NUM_AXIS];				// Needed for galvos
 static float previous_speed[NUM_AXIS]; // Speed of previous path line segment
 static float previous_nominal_speed;   // Nominal speed of previous path line segment
 
@@ -505,12 +497,18 @@ float junction_deviation = 0.1;
     apply_rotation_xyz(plan_bed_level_matrix, x, y, z);
   #endif
 
-  // The target position of the tool in absolute steps
   // Calculate target position in absolute steps
   //this should be done after the wait, because otherwise a M92 code within the gcode disrupts this calculation somehow
   long target[NUM_AXIS];
-  target[X_AXIS] = g_min[X_AXIS] + g_size[X_AXIS] * x / X_MAX_POS;//lround(x * axis_steps_per_unit[X_AXIS]);
-  target[Y_AXIS] = g_min[Y_AXIS] + g_size[Y_AXIS] * y / Y_MAX_POS;//lround(y * axis_steps_per_unit[Y_AXIS]);
+#ifdef LASER
+  struct coord targetCoord;
+  abs_galvo_position(&targetCoord, x, y);
+  target[X_AXIS] = (long)targetCoord.x;
+  target[Y_AXIS] = (long)targetCoord.y;
+#else
+  target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
+  target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
+#endif
   target[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]);     
   target[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
 
@@ -518,6 +516,64 @@ float junction_deviation = 0.1;
         dy = target[Y_AXIS] - position[Y_AXIS],
         dz = target[Z_AXIS] - position[Z_AXIS],
         de = target[E_AXIS] - position[E_AXIS];
+
+#ifdef LASER
+  //calculates steps per unit based in on maximum refresh frequency
+  float dmx = fabs(x - position_mm[X_AXIS]),
+		dmy = fabs(y - position_mm[Y_AXIS]);	 
+  float g_dist = sqrt(square(dmx) + square(dmy));
+  unsigned long g_max_steps = g_dist/feed_rate * LASER_MAX_STEP_FREQUENCY;
+  //float g_step_size[2] = { dx / (float)g_max_steps_per_segment, dy / (float)g_max_steps_per_segment };
+  axis_steps_per_unit[X_AXIS] = min(fabs(g_max_steps/dmx), max_steps_per_unit);
+  axis_steps_per_unit[Y_AXIS] = min(fabs(g_max_steps/dmy), max_steps_per_unit); 
+  unsigned long g_steps[2] = { fabs(dmx * axis_steps_per_unit[X_AXIS]), fabs(dmy * axis_steps_per_unit[Y_AXIS]) };
+  unsigned int g_step_size[2] = { dx / g_steps[X_AXIS], dy / g_steps[Y_AXIS] };
+  SERIAL_ECHO_START;
+  SERIAL_ECHOPAIR("Total Movement distance : ", g_dist);
+  SERIAL_EOL;
+  SERIAL_ECHOPAIR("feed_rate = ", feed_rate);
+  SERIAL_EOL;
+  SERIAL_ECHOPAIR("g_max_steps_per_segment = ", (unsigned long)g_max_steps);
+  SERIAL_EOL;
+  SERIAL_ECHOPAIR("dx = ", dx);
+  SERIAL_ECHOPAIR(" dy = ", dy);
+  SERIAL_EOL;
+  SERIAL_ECHOPAIR("dmx = ", dmx);
+  SERIAL_ECHOPAIR(" dmy = ", dmy);
+  SERIAL_EOL;
+  SERIAL_ECHOPAIR("X Steps Per Unit: ", axis_steps_per_unit[X_AXIS]);
+  SERIAL_ECHOPAIR(" Y Steps Per Unit: ", axis_steps_per_unit[Y_AXIS]);
+  SERIAL_EOL;
+  SERIAL_ECHOPAIR("X Steps: ", (unsigned long)g_steps[X_AXIS]);
+  SERIAL_ECHOPAIR(" Y Steps: ", (unsigned long)g_steps[Y_AXIS]);
+  SERIAL_EOL;
+  SERIAL_ECHOPAIR("X Step Size (DAC Units): ", (unsigned long)g_step_size[X_AXIS]);
+  SERIAL_ECHOPAIR(" Y Step Size (DAC Units): ", (unsigned long)g_step_size[Y_AXIS]);
+  SERIAL_EOL;
+  SERIAL_ECHO("Starting point: (");
+  SERIAL_ECHO(position_mm[X_AXIS]);
+  SERIAL_ECHO(", ");
+  SERIAL_ECHO(position_mm[Y_AXIS]);
+  SERIAL_ECHOLN(")");
+  SERIAL_ECHO("Ending point: (");
+  SERIAL_ECHO(x);
+  SERIAL_ECHO(", ");
+  SERIAL_ECHO(y);
+  SERIAL_ECHOLN(")");
+  SERIAL_EOL;
+  SERIAL_ECHO("DAC starting point: (");
+  SERIAL_ECHO((unsigned long)position[X_AXIS]);
+  SERIAL_ECHO(", ");
+  SERIAL_ECHO((unsigned long)position[Y_AXIS]);
+  SERIAL_ECHOLN(")");
+  SERIAL_ECHO("DAC ending point: (");
+  SERIAL_ECHO((unsigned long)target[X_AXIS]);
+  SERIAL_ECHO(", ");
+  SERIAL_ECHO((unsigned long)target[Y_AXIS]);
+  SERIAL_ECHOLN(")");
+  SERIAL_EOL;
+
+#endif
 
   #ifdef PREVENT_DANGEROUS_EXTRUDE
     if (de) {
@@ -545,24 +601,32 @@ float junction_deviation = 0.1;
   block->busy = false;
 
   // Number of steps for each axis
-  #ifdef COREXY
+  #if defined(COREXY)
     // corexy planning
     // these equations follow the form of the dA and dB equations on http://www.corexy.com/theory.html
     block->steps[A_AXIS] = labs(dx + dy);
     block->steps[B_AXIS] = labs(dx - dy);
-  #else
-    // default non-h-bot planning
-    block->steps[X_AXIS] = labs(dx);
-    block->steps[Y_AXIS] = labs(dy);
+  #elif defined(LASER)
+  block->start_position[X_AXIS] = position[X_AXIS];
+  block->start_position[Y_AXIS] = position[Y_AXIS];
+  block->steps_per_unit[X_AXIS] = axis_steps_per_unit[X_AXIS];
+  block->steps_per_unit[Y_AXIS] = axis_steps_per_unit[Y_AXIS];
+    block->steps[X_AXIS] = g_steps[X_AXIS];
+    block->steps[Y_AXIS] = g_steps[Y_AXIS];
+#else
+  block->steps[X_AXIS] = labs(dx);
+  block->steps[Y_AXIS] = labs(dy);
   #endif
-
   block->steps[Z_AXIS] = labs(dz);
   block->steps[E_AXIS] = labs(de);
   block->steps[E_AXIS] *= volumetric_multiplier[extruder];
   block->steps[E_AXIS] *= extruder_multiplier[extruder];
   block->steps[E_AXIS] /= 100;
+#ifdef LASER
+  block->step_event_count = max(max(block->steps[X_AXIS], block->steps[Y_AXIS]), block->steps[Z_AXIS]);
+#else
   block->step_event_count = max(block->steps[X_AXIS], max(block->steps[Y_AXIS], max(block->steps[Z_AXIS], block->steps[E_AXIS])));
-
+#endif
 #ifdef LASER
   block->laser_intensity = 255;
 #ifdef LASER_EXTRUDER
@@ -575,13 +639,14 @@ float junction_deviation = 0.1;
 	  block->laser_status = LASER_OFF;
   }
 #endif
-  
+  /*
   block->x_dac = target[X_AXIS];
   block->y_dac = target[Y_AXIS];
   block->x_dac_current = position[X_AXIS];
   block->y_dac_current = position[Y_AXIS];
   block->x_dac_step = GRID_SCALAR;
   block->y_dac_step = GRID_SCALAR;
+  */
 #if LASER_DIAGNOSTICS
   if (block->laser_status == LASER_ON) {
 	  SERIAL_ECHO_START;
@@ -605,13 +670,12 @@ float junction_deviation = 0.1;
     if (dx < 0) db |= BIT(X_HEAD); // Save the real Extruder (head) direction in X Axis
     if (dy < 0) db |= BIT(Y_HEAD); // ...and Y
     if (dx + dy < 0) db |= BIT(A_AXIS); // Motor A direction
-    if (dx - dy < 0) db |= BIT(B_AXIS); // Motor B direction
-  #elif !defined(LASER)
-    if (dx < 0) db |= BIT(X_AXIS);
-    if (dy < 0) db |= BIT(Y_AXIS); 
+    if (dx - dy < 0) db |= BIT(B_AXIS); // Motor B direction 
   #endif
-  if (dz < 0) db |= BIT(Z_AXIS);
-  if (de < 0) db |= BIT(E_AXIS); 
+	if (dx < 0) db |= BIT(X_AXIS);
+	if (dy < 0) db |= BIT(Y_AXIS);
+	if (dz < 0) db |= BIT(Z_AXIS);
+	if (de < 0) db |= BIT(E_AXIS); 
   block->direction_bits = db;
 
   block->active_extruder = extruder;
@@ -716,8 +780,8 @@ float junction_deviation = 0.1;
     delta_mm[B_AXIS] = (dx - dy) / axis_steps_per_unit[B_AXIS];
   #elif defined(LASER)
 	  float delta_mm[4];
-  delta_mm[X_AXIS] = fabs(x - position_mm[X_AXIS]);
-  delta_mm[Y_AXIS] = fabs(y - position_mm[Y_AXIS]);
+  delta_mm[X_AXIS] = dmx;
+  delta_mm[Y_AXIS] = dmy;
 	#else
     float delta_mm[4];
     delta_mm[X_AXIS] = dx / axis_steps_per_unit[X_AXIS];
@@ -726,12 +790,12 @@ float junction_deviation = 0.1;
   delta_mm[Z_AXIS] = dz / axis_steps_per_unit[Z_AXIS];
   delta_mm[E_AXIS] = (de / axis_steps_per_unit[E_AXIS]) * volumetric_multiplier[extruder] * extruder_multiplier[extruder] / 100.0;
 
-  if (block->steps[X_AXIS] <= dropsegments && block->steps[Y_AXIS] <= dropsegments && block->steps[Z_AXIS] <= dropsegments) {
+  if ( block->steps[Z_AXIS] <= dropsegments) {
     block->millimeters = fabs(delta_mm[E_AXIS]);
   } 
   else {
     block->millimeters = sqrt(
-      #ifdef COREXY
+      #if defined(COREXY)
         square(delta_mm[X_HEAD]) + square(delta_mm[Y_HEAD])
       #else
         square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS])
@@ -1030,9 +1094,17 @@ float junction_deviation = 0.1;
     #elif defined(ENABLE_AUTO_BED_LEVELING)
       apply_rotation_xyz(plan_bed_level_matrix, x, y, z);
     #endif
-
-    float nx = position[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]),
-          ny = position[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]),
+#ifdef LASER
+	  struct coord tmp;
+	  abs_galvo_position(&tmp, x, y);
+	  position_mm[X_AXIS] = x;
+	  position_mm[Y_AXIS] = y;
+	  float nx = position[X_AXIS] = tmp.x,
+          ny = position[Y_AXIS] = tmp.y,
+#else
+	  float nx = position[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]),
+		  ny = position[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]),
+#endif
           nz = position[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]),
           ne = position[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
     st_set_position(nx, ny, nz, ne);
@@ -1051,3 +1123,4 @@ void reset_acceleration_rates() {
   for (int i = 0; i < NUM_AXIS; i++)
     axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i] * axis_steps_per_unit[i];
 }
+
