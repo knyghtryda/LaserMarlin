@@ -60,19 +60,16 @@ typedef struct {
   unsigned long final_rate;                          // The minimal rate at exit
   unsigned long acceleration_st;                     // acceleration steps/sec^2
   unsigned long fan_speed;
+
 #ifdef LASER
-  unsigned long laser_power;
+  unsigned int start_position[2];
+  unsigned int step_size[2];
+  unsigned int laser_power;
   bool laser_status; // LASER_OFF, LASER_ON
   unsigned long laser_ppm; // pulses per millimeter, for pulsed and raster firing modes
   unsigned long laser_duration; // laser firing duration in microseconds, for pulsed firing mode
   long steps_l; // step count between firings of the laser, for pulsed firing mode
   unsigned long laser_intensity; // Laser firing instensity in PWM ticks
-  unsigned short x_dac; // translated dac value for the X axis
-  unsigned short y_dac; // translated dac value for the Y axis
-  unsigned short x_dac_step;
-  unsigned short y_dac_step;
-  unsigned short x_dac_current;
-  unsigned short y_dac_current;
 
 #endif
   #ifdef BARICUDA

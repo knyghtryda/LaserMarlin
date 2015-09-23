@@ -523,10 +523,13 @@ float junction_deviation = 0.1;
 		dmy = fabs(y - position_mm[Y_AXIS]);	 
   float g_dist = sqrt(square(dmx) + square(dmy));
   unsigned long g_max_steps = g_dist/feed_rate * LASER_MAX_STEP_FREQUENCY;
-  //float g_step_size[2] = { dx / (float)g_max_steps_per_segment, dy / (float)g_max_steps_per_segment };
+  // steps per unit varies by feedrate.  THIS IS NOT IN DAC STEPS, but rather in maximum
+  // allowable steps for this feedrate and distance.  Lower feedrate = Higher steps/unit
   axis_steps_per_unit[X_AXIS] = min(fabs(g_max_steps/dmx), max_steps_per_unit);
   axis_steps_per_unit[Y_AXIS] = min(fabs(g_max_steps/dmy), max_steps_per_unit); 
+  // Total number of steps for this segment
   unsigned long g_steps[2] = { fabs(dmx * axis_steps_per_unit[X_AXIS]), fabs(dmy * axis_steps_per_unit[Y_AXIS]) };
+  // The size of each step in DAC units
   unsigned int g_step_size[2] = { dx / g_steps[X_AXIS], dy / g_steps[Y_AXIS] };
   SERIAL_ECHO_START;
   SERIAL_ECHOPAIR("Total Movement distance : ", g_dist);
@@ -609,10 +612,10 @@ float junction_deviation = 0.1;
   #elif defined(LASER)
   block->start_position[X_AXIS] = position[X_AXIS];
   block->start_position[Y_AXIS] = position[Y_AXIS];
-  block->steps_per_unit[X_AXIS] = axis_steps_per_unit[X_AXIS];
-  block->steps_per_unit[Y_AXIS] = axis_steps_per_unit[Y_AXIS];
     block->steps[X_AXIS] = g_steps[X_AXIS];
     block->steps[Y_AXIS] = g_steps[Y_AXIS];
+	block->step_size[X_AXIS] = g_step_size[X_AXIS];
+	block->step_size[Y_AXIS] = g_step_size[Y_AXIS];
 #else
   block->steps[X_AXIS] = labs(dx);
   block->steps[Y_AXIS] = labs(dy);
@@ -794,7 +797,11 @@ float junction_deviation = 0.1;
     block->millimeters = fabs(delta_mm[E_AXIS]);
   } 
   else {
-    block->millimeters = sqrt(
+	  block->millimeters =
+#ifdef LASER
+		  g_dist;
+#else
+		sqrt(
       #if defined(COREXY)
         square(delta_mm[X_HEAD]) + square(delta_mm[Y_HEAD])
       #else
@@ -802,6 +809,7 @@ float junction_deviation = 0.1;
       #endif
       + square(delta_mm[Z_AXIS])
     );
+#endif
   }
   float inverse_millimeters = 1.0 / block->millimeters;  // Inverse millimeters to remove multiple divides 
 

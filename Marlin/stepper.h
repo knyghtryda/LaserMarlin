@@ -79,15 +79,9 @@ void st_wake_up();
 void scan_X_Y_galvo(unsigned long x1, unsigned long y1, unsigned long x2, unsigned long y2);
 void coordinate_XY_move(unsigned long X, unsigned long Y);
 
-short World_to_Galvo(long value);
-void X_galvo_step(int step_dir);
-void Y_galvo_step(int step_dir);
-//void digitalPotWrite(int channel, int value);
 void galvoTransfer(unsigned int axis, uint16_t position);
+void move_galvo(unsigned int axis, unsigned short value);
 void move_galvos(unsigned long X, unsigned long Y);
-void set_galvo_pos(unsigned long X, unsigned long Y);
-void move_X_galvo(unsigned short X);
-void move_Y_galvo(unsigned short Y);
 
 void timed_refresh_of_galvos(void);
   
