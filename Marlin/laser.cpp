@@ -27,7 +27,7 @@ laser_t laser;
 
 void laser_init()
 {
-  SET_OUTPUT(LASER_FIRING_PIN, OUTPUT);
+  SET_OUTPUT(LASER_FIRING_PIN);
 #ifdef INVERT_LASER
   WRITE(LASER_FIRING_PIN, HIGH);
   //analogWrite(LASER_FIRING_PIN, 255);
