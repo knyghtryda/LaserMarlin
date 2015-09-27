@@ -340,6 +340,11 @@ extern unsigned char LaserPower;
 #endif
 #endif
 
+#ifdef LASER
+#include "galvo.h"
+extern Galvo galvo;
+#endif
+
 extern void calculate_volumetric_multipliers();
 
 #endif //MARLIN_H

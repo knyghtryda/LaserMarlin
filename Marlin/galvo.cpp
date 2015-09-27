@@ -1,5 +1,171 @@
 #include "galvo.h"
 
+Galvo::Galvo() {
+	//Setting some sane values
+	setMMSize(150, 150, 150, 10);
+	setScale(1, 1);
+	Initialize();
+}
+
+Galvo::Galvo(float x_length, float y_length, float z_length, float e_length, float x_scale, float y_scale) {
+	setMMSize(x_length, y_length, z_length, e_length);
+	setScale(x_scale, y_scale);
+	Initialize();
+}
+
+void Galvo::Initialize() {
+	min_step_size = min(mm_size[X], mm_size[Y]) / (float)dacBits;
+	max_steps_per_unit = 1.0 / min_step_size;
+	calcMin();
+	calcMax();
+	calcT0Max();
+	calcSize();
+	calcCalStepSize();
+	calcTMax();
+	calcZSize();
+	e = mm_size[E] * steps_per_mm[X];
+	position[X] = min[X];
+	position[Y] = min[Y];
+}
+
+void Galvo::ComputeCalibrationTable() {
+	float x_pos = (float)min[X], y_pos = (float)min[Y];
+	float x_tmp, y_tmp;
+	/*
+	SERIAL_ECHO_START;
+	SERIAL_ECHOLN("Calibration Table");
+	SERIAL_ECHOPAIR("g_center = ", (unsigned long)g_center[Y_AXIS]);
+	SERIAL_ECHOLN("");
+	SERIAL_ECHOPAIR("g_min = ", (unsigned long)g_min[Y_AXIS]);
+	SERIAL_ECHOLN("");
+	SERIAL_ECHOPAIR("g_max = ", (unsigned long)g_max[Y_AXIS]);
+	SERIAL_ECHOLN("");
+	SERIAL_ECHOPAIR("g_size = ", (unsigned long)g_size[Y_AXIS]);
+	SERIAL_ECHOLN("");
+	SERIAL_ECHOPAIR("z_size = ", (unsigned long)z_size[Y_AXIS]);
+	SERIAL_ECHOLN("");
+	SERIAL_ECHOPAIR("t_max = ", (unsigned long)t_max[Y_AXIS]);
+	SERIAL_ECHOLN("");
+	*/
+	for (int j = 0; j < points; j++) {
+		for (int i = 0; i < points; i++) {
+			x_tmp = x_pos - (float)center[X];
+			y_tmp = y_pos - (float)center[Y];
+			y_tmp = atan2(y_tmp, z_size[Y]) * t_max[Y]; // compute y first as its designated the independent (second galvo) axis
+			x_tmp = atan2(x_tmp, sqrt((y_tmp * y_tmp) + ((float)z_size[X] * (float)z_size[X])) + (float)e) * t_max[X];  // compute x next as its dependent on the Y movement
+			x_tmp += (float)center[X] - x_pos;
+			y_tmp += (float)center[Y] - y_pos;
+			offsets[i][j][X] = (int)x_tmp;
+			offsets[i][j][Y] = (int)y_tmp;
+			/*
+			SERIAL_ECHO("(");
+			SERIAL_ECHO(offsets[i][j].x);
+			SERIAL_ECHO(", ");
+			SERIAL_ECHO(offsets[i][j].y);
+			SERIAL_ECHO(")");
+			*/
+			x_pos += cal_step_size[X];
+			if (x_pos > max[X]) x_pos = min[X];
+		}
+		y_pos += cal_step_size[Y];
+		if (y_pos > max[Y]) y_pos = min[Y];
+		//SERIAL_ECHOLN("");
+	}
+}
+
+//Applies the offset table to a set of coordinates
+void Galvo::ApplyOffsets(unsigned int * val) {
+	// shifting all coordinate values by 4 (divide by 16) in order to stop overflowing 32 bit longs
+	// This reduces bilinear interpolation resolution, but is necessary in order to not use floats.  
+	// This is not perfect and will still overflow if low values are chosen for number of grid points.
+
+	unsigned int sx = cal_step_size[X] >> 4, sy = cal_step_size[Y] >> 4;
+	unsigned int x = val[X] - min[X];
+	unsigned int y = val[Y] - min[Y];
+	unsigned int xi0 = x / cal_step_size[X],
+		yi0 = y / cal_step_size[Y];
+	unsigned int xi1, yi1;
+	if (xi0 * cal_step_size[X] >= size[X]) {
+		xi1 = xi0;
+		xi0 = xi1 - 1;
+	}
+	else {
+		xi1 = xi0 + 1;
+	}
+	if (yi0 * cal_step_size[Y] >= size[Y]) {
+		yi1 = yi0;
+		yi0 = yi1 - 1;
+	}
+	else {
+		yi1 = yi0 + 1;
+	}
+	unsigned long x0 = xi0 * sx,
+		y0 = yi0 * sy,
+		x1 = xi1 * sx,
+		y1 = yi1 * sy;
+
+	/*
+	SERIAL_ECHOPAIR("x0 = ", x0);
+	SERIAL_ECHOPAIR(" x1 = ", x1);
+	SERIAL_ECHOPAIR(" y0 = ", y0);
+	SERIAL_ECHOPAIR(" y1 = ", y1);
+	SERIAL_ECHOLN("");
+	*/
+
+	static int q00[2], q01[2], q10[2], q11[2];
+	static long a0, a1, a2, a3, a4, afx, afy;
+
+	//loads the values of the 4 calibration points around the point requested
+	q00[X] = offsets[xi0][yi0][X];
+	q01[X] = offsets[xi0][yi1][X];
+	q10[X] = offsets[xi1][yi0][X];
+	q11[X] = offsets[xi1][yi1][X];
+
+	q00[Y] = offsets[xi0][yi0][Y];
+	q01[Y] = offsets[xi0][yi1][Y];
+	q10[Y] = offsets[xi1][yi0][Y];
+	q11[Y] = offsets[xi1][yi1][Y];
+
+	// Really ugly bilinear equation from wikipedia...
+	// Not fast, but currently only used during planner phase
+	x = x >> 4;
+	y = y >> 4;
+	a0 = (x1 - x) * (y1 - y);
+	a1 = (x - x0) * (y1 - y);
+	a2 = (x1 - x) * (y - y0);
+	a3 = (x - x0) * (y - y0);
+	a4 = (x1 - x0) * (y1 - y0);
+	afx = (q00[X] * a0 + q10[X] * a1 + q01[X] * a2 + q11[X] * a3) / a4;
+	afy = (q00[Y] * a0 + q10[Y] * a1 + q01[Y] * a2 + q11[Y] * a3) / a4;
+	/*
+	SERIAL_ECHOPAIR("a0 = ", (float)a0);
+	SERIAL_ECHOPAIR(" a1 = ", (float)a1);
+	SERIAL_ECHOPAIR(" a2 = ", (float)a2);
+	SERIAL_ECHOPAIR(" a3 = ", (float)a3);
+	SERIAL_ECHOPAIR(" a4 = ", (float)a4);
+	SERIAL_ECHOPAIR(" afx = ", (float)afx);
+	*/
+	val[X] += afx;
+	val[Y] += afy;
+}
+
+//Calculates an absolute galvo position based on a float input
+void Galvo::CalcGalvoPosition(unsigned int * val, float x, float y) {
+	//sane values
+	x = max(min(x, mm_size[X]), mm_size[X]);
+	y = max(min(y, mm_size[Y]), mm_size[Y]);
+	unsigned int x_tmp = min[X] + size[X] * x / mm_size[X];
+	unsigned int y_tmp = min[Y] + size[Y] * y / mm_size[Y];
+	val[X] = x_tmp;
+	val[Y] = y_tmp;
+	//unsigned long elapsed = micros();
+	ApplyOffsets(val);
+	//elapsed = micros() - elapsed;
+	//SERIAL_ECHOPAIR("apply_offset elapsed time: ", elapsed);
+	//SERIAL_ECHOLN("us");
+}
+// disabled cpp file as galvo has been moved to a class
+#if 0
 // Galvo related global variables
 const float min_step_size = X_MAX_LENGTH / (float)0xFFFF;
 const float max_steps_per_unit = 1.0 / min_step_size;
@@ -8,7 +174,7 @@ unsigned const int points = steps + 1;
 const unsigned int center = 0xFFFF / 2;
 
 //Structure to hold an x/y offset per calibration point
-struct offset offsets[points][points];
+offset offsets[points][points];
 
 // The scale of the full grid with respect to full DAC space (0x0000 to 0xFFFF)
 // This is used to initially populate x_min and x_max
@@ -125,7 +291,7 @@ void compute_calibration_offsets() {
 }
 
 //Applies the offset table to a set of coordinates
-void apply_offset(struct coord * val) {
+void apply_offset(coord * val) {
 	// shifting all coordinate values by 4 (divide by 16) in order to stop overflowing 32 bit longs
 	// This reduces bilinear interpolation resolution, but is necessary in order to not use floats.  
 	// This is not perfect and will still overflow if low values are chosen for number of grid points.
@@ -161,10 +327,10 @@ void apply_offset(struct coord * val) {
 	SERIAL_ECHOPAIR(" y1 = ", y1);
 	SERIAL_ECHOLN("");
 	*/
-	struct offset q00, q01, q10, q11;
-	long a0, a1, a2, a3, a4, afx, afy;
-	//loads the values of the 4 calibration points around the point requested
+	static offset q00, q01, q10, q11;
+	static long a0, a1, a2, a3, a4, afx, afy;
 
+	//loads the values of the 4 calibration points around the point requested
 	q00.x = offsets[xi0][yi0].x;
 	q01.x = offsets[xi0][yi1].x;
 	q10.x = offsets[xi1][yi0].x;
@@ -199,7 +365,7 @@ void apply_offset(struct coord * val) {
 }
 
 // calculates the absolute galvo position based on all offsets and calibration points
-void abs_galvo_position(struct coord * val, float x, float y) {
+void abs_galvo_position(coord * val, float x, float y) {
 	unsigned int x_tmp = g_min[X_AXIS] + g_size[X_AXIS] * x / max_pos[X_AXIS];
 	unsigned int y_tmp = g_min[Y_AXIS] + g_size[Y_AXIS] * y / max_pos[Y_AXIS];
 	val->x = x_tmp;
@@ -226,3 +392,4 @@ int select_y_index(float y) {
 	while (y > get_y(i) && i < steps) i++;
 	return i - 1;
 }
+#endif

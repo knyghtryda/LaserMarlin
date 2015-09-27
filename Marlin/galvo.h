@@ -1,84 +1,219 @@
 #pragma once
-#include "Marlin.h"
-
 #ifndef GALVO_H
 #define GALVO_H
+#include "PDQ_FastPin.h"
+#include <math.h>
 
-// Galvo related global variables
-extern const float min_step_size;
-extern float step_size[2];
-extern const float max_steps_per_unit;
-extern unsigned const int steps;
-extern unsigned const int points;
-
-
+/*
 //Trying to keep everything stored in 16 bits, so separating offsets vs coordinates
 //Only the offsets need negative values.
-struct coord {
+typedef struct coord {
 	unsigned int x;
 	unsigned int y;
 };
 
 //Structure to hold an x/y offset per calibration point
-struct offset {
+typedef struct offset {
 	int x;
 	int y;
 };
+*/
 
-//The scale of the full grid with respect to full DAC space (0x0000 to 0xFFFF)
-extern float g_scale[2];
+class Galvo {
+private:
+	enum {
+		X = 0,
+		Y = 1,
+		Z = 3,
+		E = 4,
+		CAL_GRID_SIZE = 8,
+		DAC_MAX = 0xFFFF
+	};
+	float min_step_size;
+	float max_steps_per_unit;
+	const static unsigned int steps = CAL_GRID_SIZE;
+	const static unsigned int points = CAL_GRID_SIZE + 1;
+	
+	
 
-//The shift value for DAC space.  This will induce a tilt on an axis and used to compensate for a non vertical center point
-extern unsigned int t_shift[2];
+	//The scale of the full grid with respect to full DAC space (0x0000 to 0xFFFF)
+	float scale[2];
 
-//The center of the full grid with respect to full DAC space (0x0000 to 0xFFFF)
-extern unsigned int g_center[2];
+	// number of bits in the DAC.  Could concievably need to to be modified so it exists as a variable
+	unsigned int dacBits = DAC_MAX;
 
-//The calculated minimum DAC value
-extern unsigned int g_min[2];
+	//The shift value for DAC space.  This will induce a tilt on an axis and used to compensate for a non vertical center point
+	unsigned int shift[2] = { 0, 0 };
 
-//The calculated maximum DAC value.  -1 is needed in order to make it an even value (hacky... may need some better math)
-extern unsigned int g_max[2];
+	//The center of the full grid with respect to full DAC space (0x0000 to 0xFFFF)
+	unsigned int center[2] = {
+		dacBits/2 + shift[X],
+		dacBits/2 + shift[Y]
+	};
 
-//The calculated total size of the printable space in DAC units
-extern unsigned int g_size[2];
+	//The calculated minimum DAC value
+	unsigned int min[2];
 
-// The calculated steps per mm (unrelated to printing steps per unit)
-// This is used to calculate z_size and e
-extern float steps_per_mm[2];
+	//The calculated maximum DAC value.  -1 is needed in order to make it an even value (hacky... may need some better math)
+	unsigned int max[2];
 
-//The distance between each calibration point
-extern unsigned int cal_step_size[2];
+	//The calculated total size of the printable space in DAC units
+	unsigned int size[2];
+	
+	//The size of the target in mm
+	float mm_size[4];
 
-//The distance between the print bed and last galvo mirror expressed in steps
-extern unsigned int z_size[2];
+	// The calculated steps per mm (unrelated to printing steps per unit)
+	// This is used to calculate z_size and e
+	float steps_per_mm[2];
 
-//The max theta (per axis) of the galvo as calculated by the size of the print area
-extern const float t0_max;;
+	//The distance between each calibration point
+	unsigned int cal_step_size[2];
 
-//The max theta expressed in DAC steps
-extern float t_max[2];
+	//The distance between each calibration point in mm
+	float step_size[2] = { mm_size[X] / steps, mm_size[Y] / steps };
 
-//The distance between the mirrors in DAC steps
-extern const unsigned int e;
+	//The distance between the print bed and last galvo mirror expressed in steps
+	unsigned int z_size[2];
 
-//Global galvo position. 
-extern unsigned int g_position[2];
+	//The max theta (per axis) of the galvo as calculated by the size of the print area
+	float t0_max[2];
 
-//Computes the calibration offset table
-void compute_calibration_offsets();
+	//The max theta expressed in DAC steps
+	float t_max[2];
 
-//Applies the offset table to a set of coordinates
-void apply_offset(struct coord * val);
+	//The distance between the mirrors in DAC steps
+	unsigned int e;
 
-// calculates the absolute galvo position based on all offsets and calibration points
-void abs_galvo_position(struct coord * val, float x, float y);
+	//Global galvo position. 
+	unsigned int position[2];
 
-// gets the grid index 
-float get_x(int i);
-float get_y(int i);
+public:
+	//array to hold an x/y offset per calibration point
+	int offsets[points][points][2];
 
-int select_x_index(float x);
+	Galvo();
 
-int select_y_index(float y);
+	Galvo(float x_length, float y_length, float z_length, float e_length, float x_scale, float y_scale);
+
+	// Initializes all variables
+	// This should be called after you vary any initialized parameter
+	void Initialize();
+
+	//Computes the calibration offset table
+	void ComputeCalibrationTable();
+
+	//Applies the offset table to a set of coordinates
+	void ApplyOffsets(unsigned int * val);
+
+	// calculates the absolute galvo position based on all offsets and calibration points
+	void CalcGalvoPosition(unsigned int * val, float x, float y);
+
+	// gets the grid index 
+	/*
+	static float get_x(int i);
+	static float get_y(int i);
+
+	static int select_x_index(float x);
+	static int select_y_index(float y);
+
+	*/
+	float get_x(int i) { return min[X] + step_size[X] * i; }
+	float get_y(int i) { return min[Y] + step_size[Y] * i; }
+
+	int select_x_index(float x) {
+		int i = 1;
+		while (x > get_x(i) && i < steps) i++;
+		return i - 1;
+	}
+
+	int select_y_index(float y) {
+		int i = 1;
+		while (y > get_y(i) && i < steps) i++;
+		return i - 1;
+	}
+
+	void calcMin() {
+		min[X] = (int)((float)center[X] * (1 - scale[X]));
+		min[Y] = (int)((float)center[Y] * (1 - scale[Y]));
+	};
+
+	void calcMax() {
+		max[X] = (int)((float)center[X] * (1 + scale[X])) - 1;
+		max[Y] = (int)((float)center[Y] * (1 + scale[Y])) - 1;
+	};
+
+	void calcSize() {
+		size[X] = max[X] - min[X];
+		size[Y] = max[Y] - min[Y];
+	};
+
+	void setMMSize(float x, float y, float z, float e) {
+		mm_size[X] = x;
+		mm_size[Y] = y;
+		mm_size[Z] = z;
+		mm_size[E] = e;
+	};
+
+	void setScale(float x, float y) {
+		scale[X] = x;
+		scale[Y] = y;
+	};
+	
+	void calcZSize() {
+		z_size[X] = (unsigned int)(mm_size[Z] * steps_per_mm[X]);
+		z_size[Y] = (unsigned int)(mm_size[Z] * steps_per_mm[Y]);
+	};
+
+	void calcCalStepSize() {
+		cal_step_size[X] = size[X] / steps;
+		cal_step_size[Y] = size[Y] / steps;
+	};
+
+	void calcT0Max() {
+		t0_max[X] = atan((mm_size[X] / 2) / mm_size[Z]);
+		t0_max[Y] = atan((mm_size[Y] / 2) / mm_size[Z]);
+	};
+
+	void calcTMax() {
+		t_max[X] = (float)(size[X] / 2.0) / t0_max[X];
+		t_max[Y] = (float)(size[Y] / 2.0) / t0_max[Y];
+	};
+
+	void calcStepsPerMM() {
+		steps_per_mm[X] = (float)size[X] / (float)mm_size[X];
+		steps_per_mm[Y] = (float)size[Y] / (float)mm_size[Y];
+	};
+
+	void setPosition(unsigned int x, unsigned int y) {
+		position[X] = x;
+		position[Y] = y;
+	};
+
+	void setOffset(unsigned int x, unsigned int y, int x_offset, int y_offset) {
+		offsets[x][y][X] = x_offset;
+		offsets[x][y][Y] = y_offset;
+	}
+
+	int getOffset(unsigned int x, unsigned int y, unsigned int axis) {
+		return offsets[x][y][axis];
+	}
+
+	unsigned int getOffsetsSize() {
+		return sizeof(offsets);
+	}
+
+	static const unsigned int getSteps() {
+		return steps;
+	}
+
+	static const unsigned int getPoints() {
+		return points;
+	}
+
+	unsigned int getMaxStepsPerUnit() {
+		return max_steps_per_unit;
+	}
+};
+
 #endif

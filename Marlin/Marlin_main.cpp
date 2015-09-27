@@ -38,12 +38,8 @@
 
 #define SERVO_LEVELING (defined(ENABLE_AUTO_BED_LEVELING) && PROBE_SERVO_DEACTIVATION_DELAY > 0)
 
-#if defined(MESH_BED_LEVELING) || defined(GALVO_CALIBRATION)
+#if defined(MESH_BED_LEVELING) 
   #include "mesh_bed_leveling.h"
-#endif
-
-#if defined(GALVO_CALIBRATION)
-#include "galvo_calibration.h"
 #endif
 
 #include "ultralcd.h"
@@ -383,12 +379,7 @@ bool target_direction;
 #endif
 
 #ifdef LASER
-  float galvo[3] = { 0 };
-  float laser_res_distance = MIRROR_RES_DISTANCE;
-  float x_length = X_MAX_LENGTH;
-  float y_length = Y_MAX_LENGTH;
-  float laser_segments_per_second = LASER_SEGMENTS_PER_SECOND;
-  static bool calibration_mode = false;
+  Galvo galvo(X_MAX_LENGTH, Y_MAX_LENGTH, Z_MAX_LENGTH, E_LENGTH, GALVO_X_SCALE, GALVO_Y_SCALE);
 #endif
 
 #ifdef SCARA
@@ -689,7 +680,7 @@ void setup() {
   // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
   Config_RetrieveSettings();
   //computes the calibration offsets.  This will need to be moved into Config_RetrieveSettings
-  compute_calibration_offsets();
+  galvo.ComputeCalibrationTable();
   lcd_init();
   _delay_ms(1000);  // wait 1sec to display the splash screen
 #ifndef LASER
@@ -6180,16 +6171,18 @@ void clamp_to_software_endstops(float target[3]) {
 
 #endif // DELTA
 
-#if defined(MESH_BED_LEVELING) || defined(GALVO_CALIBRATION)
+#if defined(MESH_BED_LEVELING) 
 
 // This function is used to split lines on mesh borders so each segment is only part of one mesh area
 void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_rate, const uint8_t &extruder, uint8_t x_splits=0xff, uint8_t y_splits=0xff)
 {
+
   if (!mbl.active) {
     plan_buffer_line(x, y, z, e, feed_rate, extruder);
     set_current_to_destination();
     return;
   }
+
   int pix = mbl.select_x_index(current_position[X_AXIS]);
   int piy = mbl.select_y_index(current_position[Y_AXIS]);
   int ix = mbl.select_x_index(x);
@@ -6247,18 +6240,18 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 }
 #endif  // MESH_BED_LEVELING
 
-#ifdef LASER
-//custom plan buffer line for galvos.  Used to split lines on grid just like for mesh.
+#ifdef GALVO_CALIBRATION
+//custom plan buffer line for galvos.  Used to split lines on grid just like for mesh leveling.
 void galvo_plan_buffer_line(float x, float y, float z, const float e, float feed_rate, const uint8_t &extruder, uint8_t x_splits = 0xff, uint8_t y_splits = 0xff)
 {
-	int pix = select_x_index(current_position[X_AXIS]);
-	int piy = select_y_index(current_position[Y_AXIS]);
-	int ix = select_x_index(x);
-	int iy = select_y_index(y);
-	pix = min(pix, steps - 1);
-	piy = min(piy, steps - 1);
-	ix = min(ix, steps - 1);
-	iy = min(iy, steps - 1);
+	int pix = galvo.select_x_index(current_position[X_AXIS]);
+	int piy = galvo.select_y_index(current_position[Y_AXIS]);
+	int ix = galvo.select_x_index(x);
+	int iy = galvo.select_y_index(y);
+	pix = min(pix, galvo.getSteps() - 1);
+	piy = min(piy, galvo.getSteps() - 1);
+	ix = min(ix, galvo.getSteps() - 1);
+	iy = min(iy, galvo.getSteps() - 1);
 	if (pix == ix && piy == iy) {
 		// Start and end on same mesh square
 		plan_buffer_line(x, y, z, e, feed_rate, extruder);
@@ -6267,28 +6260,28 @@ void galvo_plan_buffer_line(float x, float y, float z, const float e, float feed
 	}
 	float nx, ny, ne, normalized_dist;
 	if (ix > pix && (x_splits)& BIT(ix)) {
-		nx = get_x(ix);
+		nx = galvo.get_x(ix);
 		normalized_dist = (nx - current_position[X_AXIS]) / (x - current_position[X_AXIS]);
 		ny = current_position[Y_AXIS] + (y - current_position[Y_AXIS]) * normalized_dist;
 		ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
 		x_splits ^= BIT(ix);
 }
 	else if (ix < pix && (x_splits)& BIT(pix)) {
-		nx = get_x(pix);
+		nx = galvo.get_x(pix);
 		normalized_dist = (nx - current_position[X_AXIS]) / (x - current_position[X_AXIS]);
 		ny = current_position[Y_AXIS] + (y - current_position[Y_AXIS]) * normalized_dist;
 		ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
 		x_splits ^= BIT(pix);
 	}
 	else if (iy > piy && (y_splits)& BIT(iy)) {
-		ny = get_y(iy);
+		ny = galvo.get_y(iy);
 		normalized_dist = (ny - current_position[Y_AXIS]) / (y - current_position[Y_AXIS]);
 		nx = current_position[X_AXIS] + (x - current_position[X_AXIS]) * normalized_dist;
 		ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
 		y_splits ^= BIT(iy);
 	}
 	else if (iy < piy && (y_splits)& BIT(piy)) {
-		ny = get_y(piy);
+		ny = galvo.get_y(piy);
 		normalized_dist = (ny - current_position[Y_AXIS]) / (y - current_position[Y_AXIS]);
 		nx = current_position[X_AXIS] + (x - current_position[X_AXIS]) * normalized_dist;
 		ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
@@ -6378,51 +6371,6 @@ void galvo_plan_buffer_line(float x, float y, float z, const float e, float feed
 
 #endif // DELTA || SCARA
 
-#ifdef LASER
-  // Code for doing real time mapping of print space to galvo space
-  // in order to compensate for galvo calibration offsets
-  void calculate_galvo(float cartesian[3]) {
-	  galvo[X_AXIS] = cartesian[X_AXIS];
-	  galvo[Y_AXIS] = cartesian[Y_AXIS];
-	  galvo[Z_AXIS] = cartesian[Z_AXIS];
-  }
-
-  inline bool prepare_move_laser() {
-	  float difference[NUM_AXIS];
-	  for (int8_t i=0; i < NUM_AXIS; i++) difference[i] = destination[i] - current_position[i];
-
-	  float cartesian_mm = sqrt(sq(difference[X_AXIS]) + sq(difference[Y_AXIS]));
-	  if (cartesian_mm < 0.000001) cartesian_mm = abs(difference[E_AXIS]);
-	  if (cartesian_mm < 0.000001) return false;
-	  float seconds = 6000 * cartesian_mm / feedrate / feedrate_multiplier;
-	  int steps = max(1, int(laser_segments_per_second * seconds));
-
-	  // SERIAL_ECHOPGM("mm="); SERIAL_ECHO(cartesian_mm);
-	  // SERIAL_ECHOPGM(" seconds="); SERIAL_ECHO(seconds);
-	  // SERIAL_ECHOPGM(" steps="); SERIAL_ECHOLN(steps);
-
-	  for (int s = 1; s <= steps; s++) {
-
-		  float fraction = float(s) / float(steps);
-
-		  for (int8_t i = 0; i < NUM_AXIS; i++)
-			  destination[i] = current_position[i] + difference[i] * fraction;
-
-		  calculate_galvo(destination);
-
-		  //SERIAL_ECHOPGM("destination[X_AXIS]="); SERIAL_ECHOLN(destination[X_AXIS]);
-		  //SERIAL_ECHOPGM("destination[Y_AXIS]="); SERIAL_ECHOLN(destination[Y_AXIS]);
-		  //SERIAL_ECHOPGM("destination[Z_AXIS]="); SERIAL_ECHOLN(destination[Z_AXIS]);
-		  //SERIAL_ECHOPGM("delta[X_AXIS]="); SERIAL_ECHOLN(delta[X_AXIS]);
-		  //SERIAL_ECHOPGM("delta[Y_AXIS]="); SERIAL_ECHOLN(delta[Y_AXIS]);
-		  //SERIAL_ECHOPGM("delta[Z_AXIS]="); SERIAL_ECHOLN(delta[Z_AXIS]);
-
-		  plan_buffer_line(galvo[X_AXIS], galvo[Y_AXIS], galvo[Z_AXIS], destination[E_AXIS], feedrate/60*feedrate_multiplier/100.0, active_extruder);
-	  }
-	  return true;
-  }
-
-#endif // LASER
 
 #ifdef SCARA
   inline bool prepare_move_scara() { return prepare_move_delta(); }
@@ -6475,10 +6423,12 @@ void galvo_plan_buffer_line(float x, float y, float z, const float e, float feed
       line_to_destination();
     }
     else {
-      #if defined(MESH_BED_LEVELING) || defined(GALVO_CALIBRATION)
+      #if defined(MESH_BED_LEVELING) 
         mesh_plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], (feedrate/60)*(feedrate_multiplier/100.0), active_extruder);
         return false;
-      #else
+      #elif defined(GALVO_CALIBRATION)
+		galvo_plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], (feedrate / 60)*(feedrate_multiplier / 100.0), active_extruder);
+#else
         line_to_destination(feedrate * feedrate_multiplier / 100.0);
       #endif
     }
@@ -6510,11 +6460,7 @@ void prepare_move() {
   #ifdef DUAL_X_CARRIAGE
     if (!prepare_move_dual_x_carriage()) return;
   #endif
-	/**
-#ifdef LASER
-	if (!prepare_move_laser()) return;
-#endif
-	**/
+
 #if !defined(DELTA) && !defined(SCARA)// && !defined(LASER)
     if (!prepare_move_cartesian()) return;
   #endif
