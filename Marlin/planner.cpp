@@ -502,10 +502,10 @@ float junction_deviation = 0.1;
   //this should be done after the wait, because otherwise a M92 code within the gcode disrupts this calculation somehow
   long target[NUM_AXIS];
 #ifdef LASER
-  struct coord targetCoord;
-  abs_galvo_position(&targetCoord, x, y);
-  target[X_AXIS] = (long)targetCoord.x;
-  target[Y_AXIS] = (long)targetCoord.y;
+  unsigned int targetCoord[2];
+  galvo.CalcGalvoPosition(targetCoord, x, y);
+  target[X_AXIS] = (long)targetCoord[X_AXIS];
+  target[Y_AXIS] = (long)targetCoord[Y_AXIS];
 #else
   target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
   target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
@@ -526,8 +526,8 @@ float junction_deviation = 0.1;
   unsigned long g_max_steps = g_dist/feed_rate * LASER_MAX_STEP_FREQUENCY;
   // steps per unit varies by feedrate.  THIS IS NOT IN DAC STEPS, but rather in maximum
   // allowable steps for this feedrate and distance.  Lower feedrate = Higher steps/unit
-  axis_steps_per_unit[X_AXIS] = min(fabs(g_max_steps/dmx), max_steps_per_unit);
-  axis_steps_per_unit[Y_AXIS] = min(fabs(g_max_steps/dmy), max_steps_per_unit); 
+  axis_steps_per_unit[X_AXIS] = min(fabs(g_max_steps/dmx), galvo.getMaxStepsPerUnit());
+  axis_steps_per_unit[Y_AXIS] = min(fabs(g_max_steps/dmy), galvo.getMaxStepsPerUnit()); 
   // Total number of steps for this segment
   unsigned long g_steps[2] = { fabs(dmx * axis_steps_per_unit[X_AXIS]), fabs(dmy * axis_steps_per_unit[Y_AXIS]) };
   // The size of each step in DAC units
@@ -639,8 +639,7 @@ float junction_deviation = 0.1;
 	  //&& current_position[Z_AXIS] == destination[Z_AXIS] // Disabling Z check on laser fire
   {
 	  block->laser_status = LASER_ON;
-  }
-  if (de <= 0) {
+  } else {
 	  block->laser_status = LASER_OFF;
   }
 #endif
@@ -1111,12 +1110,12 @@ float junction_deviation = 0.1;
       apply_rotation_xyz(plan_bed_level_matrix, x, y, z);
     #endif
 #ifdef LASER
-	  struct coord tmp;
-	  abs_galvo_position(&tmp, x, y);
+	  unsigned int tmp[2];
+	  galvo.CalcGalvoPosition(tmp, x, y);
 	  position_mm[X_AXIS] = x;
 	  position_mm[Y_AXIS] = y;
-	  float nx = position[X_AXIS] = tmp.x,
-          ny = position[Y_AXIS] = tmp.y,
+	  float nx = position[X_AXIS] = tmp[X_AXIS],
+          ny = position[Y_AXIS] = tmp[Y_AXIS],
 #else
 	  float nx = position[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]),
 		  ny = position[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]),

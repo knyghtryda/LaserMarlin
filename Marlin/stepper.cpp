@@ -475,7 +475,8 @@ ISR(TIMER1_COMPA_vect) {
       counter_x = -(current_block->step_event_count >> 1);
       counter_y = counter_z = counter_e = counter_x;
       step_events_completed = 0;
-
+	  count_position[X_AXIS] = current_block->start_position[X_AXIS];
+	  count_position[Y_AXIS] = current_block->start_position[Y_AXIS];
       #ifdef Z_LATE_ENABLE
         if (current_block->steps[Z_AXIS] > 0) {
           enable_z();
@@ -666,36 +667,34 @@ ISR(TIMER1_COMPA_vect) {
       }
       old_endstop_bits = current_endstop_bits;
 	}
-
+	
+	if ((int)count_direction[X_AXIS] * (int)current_block->step_size[X_AXIS] > 0) {
+		WRITE(ISR_TRIGGER, HIGH);
+	}
+	else {
+		WRITE(ISR_TRIGGER, LOW);
+	}
+	
 #ifdef LASER
 #define _COUNTER(axis) counter_## axis
 #define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
 #define _GALVO_POS(AXIS) AXIS ##_Galvo_Position
 #define _SPI_TRANSFER asm volatile("nop"); \
 						while (!(SPSR & _BV(SPIF)));
-	/*
-#define APPLY_GALVO_MOVEMENT(axis, AXIS) \
-		  _COUNTER(axis) += current_block->steps[_AXIS(AXIS)] << step_shift; \
-		  if (_COUNTER(axis) > 0) { \
-		  _COUNTER(axis) -= current_block->step_event_count << step_shift; \
-		  count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] << step_shift; \
-		  AXIS ##_galvo_step(count_direction[_AXIS(AXIS)] << step_shift); \
-		  }
 
-		  */
 	// unrolled the SPI transfer function in order to save on function calls.
 
 #define APPLY_GALVO_MOVEMENT(axis, AXIS) \
           _COUNTER(axis) += current_block->steps[_AXIS(AXIS)]; \
           if (_COUNTER(axis) > 0) { \
             _COUNTER(axis) -= current_block->step_event_count; \
-			count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)] * current_block->step_size[_AXIS(AXIS)]; \
+			count_position[_AXIS(AXIS)] += (int)count_direction[_AXIS(AXIS)] * (int)current_block->step_size[_AXIS(AXIS)]; \
 			WRITE(GALVO_SS_PIN, LOW); \
 			SPDR = AXIS ##_AXIS | (3 << 4); \
 			_SPI_TRANSFER \
-			SPDR = count_position[_AXIS(AXIS)] >> 8; \
+			SPDR = (unsigned int)count_position[_AXIS(AXIS)] >> 8; \
 			_SPI_TRANSFER \
-			SPDR = count_position[_AXIS(AXIS)]; \
+			SPDR = (unsigned int)count_position[_AXIS(AXIS)]; \
 			_SPI_TRANSFER \
 			WRITE(GALVO_SS_PIN, HIGH); \
 		  }

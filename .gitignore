@@ -28,3 +28,7 @@ Marlin/Visual Micro/Upload.vmps.xml
 *.new
 Documentation/Logo/Thumbs.db
 Marlin/Visual Micro/Configuration.Release.vmps.xml
+Marlin/__vm/.Marlin.vsarduino.h
+Marlin/__vm/Compile.vmps.xml
+Marlin/__vm/Configuration.Release.vmps.xml
+Marlin/__vm/Upload.vmps.xml
