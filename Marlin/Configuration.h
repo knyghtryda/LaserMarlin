@@ -93,12 +93,16 @@ Here are some standard links for getting your machine calibrated:
 // Distance from final mirror to base of reservoir.  Needs to be accurate in
 // order for calibration to be accurate
 #define MIRROR_RES_DISTANCE 143.0
-#define CAL_GRID_SIZE 8
+// number of points on the calibration grid.  This will be moved to MESH values
+#define GRID_SIZE 8
 #define GALVO_X_SCALE 0.6
 #define GALVO_Y_SCALE 0.6
 #define GALVO_CENTER 0xFFFF/2
 // distance between the two mirrors
-#define E_DISTANCE 7.0
+#define E_LENGTH 7.0
+// Enables calibration routines and calibration grid
+#define GALVO_CALIBRATION
+
 #endif
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
 // You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
