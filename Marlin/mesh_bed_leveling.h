@@ -1,5 +1,5 @@
 #include "Marlin.h"
-#if defined(MESH_BED_LEVELING) || defined(GALVO_CALIBRATION)
+#if defined(MESH_BED_LEVELING)
 
 #ifndef MESH_BED_LEVELING_H
 #define MESH_BED_LEVELING_H
@@ -10,16 +10,18 @@
   class mesh_bed_leveling {
   public:
     uint8_t active;
+#ifndef GALVO_CALIBRATION
     float z_values[MESH_NUM_Y_POINTS][MESH_NUM_X_POINTS];
-    
+	void reset();
+#endif
     mesh_bed_leveling();
-    
-    void reset();
     
     float get_x(int i) { return MESH_MIN_X + MESH_X_DIST * i; }
     float get_y(int i) { return MESH_MIN_Y + MESH_Y_DIST * i; }
+
+#ifndef GALVO_CALIBRATION
     void set_z(int ix, int iy, float z) { z_values[iy][ix] = z; }
-    
+#endif
     int select_x_index(float x) {
       int i = 1;
       while (x > get_x(i) && i < MESH_NUM_X_POINTS-1) i++;
@@ -31,7 +33,8 @@
       while (y > get_y(i) && i < MESH_NUM_Y_POINTS - 1) i++;
       return i - 1;
     }
-    
+
+#ifndef GALVO_CALIBRATION    
     float calc_z0(float a0, float a1, float z1, float a2, float z2) {
       float delta_z = (z2 - z1)/(a2 - a1);
       float delta_a = a0 - a1;
@@ -41,6 +44,7 @@
     float get_z(float x0, float y0) {
       int x_index = select_x_index(x0);
       int y_index = select_y_index(y0);
+
       float z1 = calc_z0(x0,
                          get_x(x_index), z_values[y_index][x_index],
                          get_x(x_index+1), z_values[y_index][x_index+1]);
@@ -52,6 +56,7 @@
                          get_y(y_index+1), z2);
       return z0;
     }
+#endif
   };
 #ifdef MESH_BED_LEVELING
   extern mesh_bed_leveling mbl;
