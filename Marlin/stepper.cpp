@@ -449,6 +449,29 @@ FORCE_INLINE void trapezoid_generator_reset() {
   // SERIAL_ECHOLN(current_block->final_advance/256.0);
 }
 
+#ifdef LASER
+FORCE_INLINE void transfer(volatile char byte) {
+	while (!(SPSR & _BV(SPIF)));
+	SPDR = byte;
+}
+
+FORCE_INLINE void transfer16(volatile unsigned int uint) {
+	transfer(uint >> 8);
+	transfer(uint);
+}
+
+FORCE_INLINE void transferDAC(volatile unsigned int * uint) {
+	WRITE(GALVO_SS_PIN, LOW);
+	transfer(X_AXIS | (3 << 4));
+	transfer16(uint[X_AXIS]);
+	WRITE(GALVO_SS_PIN, HIGH);
+	WRITE(GALVO_SS_PIN, LOW);
+	transfer(Y_AXIS | (3 << 4));
+	transfer16(uint[Y_AXIS]);
+	WRITE(GALVO_SS_PIN, HIGH);
+}
+#endif
+
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse.
 // It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately.
 ISR(TIMER1_COMPA_vect) {
@@ -674,7 +697,7 @@ ISR(TIMER1_COMPA_vect) {
 	else {
 		WRITE(ISR_TRIGGER, LOW);
 	}
-	
+
 #ifdef LASER
 #define _COUNTER(axis) counter_## axis
 #define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
@@ -689,14 +712,7 @@ ISR(TIMER1_COMPA_vect) {
           if (_COUNTER(axis) > 0) { \
             _COUNTER(axis) -= current_block->step_event_count; \
 			count_position[_AXIS(AXIS)] += (int)count_direction[_AXIS(AXIS)] * (int)current_block->step_size[_AXIS(AXIS)]; \
-			WRITE(GALVO_SS_PIN, LOW); \
-			SPDR = AXIS ##_AXIS | (3 << 4); \
-			_SPI_TRANSFER \
-			SPDR = (unsigned int)count_position[_AXIS(AXIS)] >> 8; \
-			_SPI_TRANSFER \
-			SPDR = (unsigned int)count_position[_AXIS(AXIS)]; \
-			_SPI_TRANSFER \
-			WRITE(GALVO_SS_PIN, HIGH); \
+			transferDAC((volatile unsigned int *)count_position);\
 		  }
 		  
 	APPLY_GALVO_MOVEMENT(x, X);
