@@ -564,7 +564,7 @@ const bool Z_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic
 // default settings
 #define DAC_SIZE 65535
 #define XY_STEPS_PER_UNIT DAC_SIZE/X_MAX_LENGTH // UNUSED, but here just as a reference point
-#define Z_MICROSTEPS 16
+#define Z_MICROSTEPS 4
 #define Z_STEPS_PER_REV 200
 #define Z_TPM 0.70866141732 //  18/25.4
 #define Z_STEPS_PER_UNIT Z_STEPS_PER_REV*Z_MICROSTEPS*Z_TPM
