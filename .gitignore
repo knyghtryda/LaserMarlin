@@ -32,3 +32,4 @@ Marlin/__vm/.Marlin.vsarduino.h
 Marlin/__vm/Compile.vmps.xml
 Marlin/__vm/Configuration.Release.vmps.xml
 Marlin/__vm/Upload.vmps.xml
+Marlin/configuration_store - Copy.cpp
