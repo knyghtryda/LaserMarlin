@@ -504,6 +504,7 @@ float junction_deviation = 0.1;
 #ifdef LASER
   unsigned int targetCoord[2];
   galvo.CalcGalvoPosition(targetCoord, x, y);
+  //SERIAL_ECHOPAIR("Target X ", (unsigned long) targetCoord[X_AXIS]);
   target[X_AXIS] = (long)targetCoord[X_AXIS];
   target[Y_AXIS] = (long)targetCoord[Y_AXIS];
 #else
@@ -513,7 +514,7 @@ float junction_deviation = 0.1;
   target[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]);     
   target[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
 
-  float dx = target[X_AXIS] - position[X_AXIS],
+  float  dx = target[X_AXIS] - position[X_AXIS],
         dy = target[Y_AXIS] - position[Y_AXIS],
         dz = target[Z_AXIS] - position[Z_AXIS],
         de = target[E_AXIS] - position[E_AXIS];
@@ -526,22 +527,23 @@ float junction_deviation = 0.1;
   unsigned long g_max_steps = g_dist/feed_rate * LASER_MAX_STEP_FREQUENCY;
   // steps per unit varies by feedrate.  THIS IS NOT IN DAC STEPS, but rather in maximum
   // allowable steps for this feedrate and distance.  Lower feedrate = Higher steps/unit
-  axis_steps_per_unit[X_AXIS] = min(fabs(g_max_steps/dmx), galvo.getMaxStepsPerUnit());
-  axis_steps_per_unit[Y_AXIS] = min(fabs(g_max_steps/dmy), galvo.getMaxStepsPerUnit()); 
+  axis_steps_per_unit[X_AXIS] = min(fabs(g_max_steps/dmx), galvo.getMaxStepsPerUnit(X_AXIS));
+  axis_steps_per_unit[Y_AXIS] = min(fabs(g_max_steps/dmy), galvo.getMaxStepsPerUnit(Y_AXIS)); 
   // Total number of steps for this segment
   unsigned long g_steps[2] = { fabs(dmx * axis_steps_per_unit[X_AXIS]), fabs(dmy * axis_steps_per_unit[Y_AXIS]) };
   // The size of each step in DAC units
-  unsigned int g_step_size[2] = { dx / g_steps[X_AXIS], dy / g_steps[Y_AXIS] };
-  /*
-  SERIAL_ECHO_START;
+  unsigned int g_step_size[2] = { abs(dx / (long)g_steps[X_AXIS]), abs(dy / (long)g_steps[Y_AXIS]) };
+  g_steps[X_AXIS] = ceil(dx / g_step_size[X_AXIS]);
+  g_steps[Y_AXIS] = ceil(dy / g_step_size[Y_AXIS]);
+  
   SERIAL_ECHOPAIR("Total Movement distance : ", g_dist);
   SERIAL_EOL;
   SERIAL_ECHOPAIR("feed_rate = ", feed_rate);
   SERIAL_EOL;
   SERIAL_ECHOPAIR("g_max_steps_per_segment = ", (unsigned long)g_max_steps);
   SERIAL_EOL;
-  SERIAL_ECHOPAIR("dx = ", dx);
-  SERIAL_ECHOPAIR(" dy = ", dy);
+  SERIAL_ECHOPAIR("dx = ", (double) dx);
+  SERIAL_ECHOPAIR(" dy = ", (double) dy);
   SERIAL_EOL;
   SERIAL_ECHOPAIR("dmx = ", dmx);
   SERIAL_ECHOPAIR(" dmy = ", dmy);
@@ -577,7 +579,8 @@ float junction_deviation = 0.1;
   SERIAL_ECHO((unsigned long)target[Y_AXIS]);
   SERIAL_ECHOLN(")");
   SERIAL_EOL;
-  */
+  
+
 #endif
 
   #ifdef PREVENT_DANGEROUS_EXTRUDE
@@ -614,6 +617,9 @@ float junction_deviation = 0.1;
   #elif defined(LASER)
   block->start_position[X_AXIS] = position[X_AXIS];
   block->start_position[Y_AXIS] = position[Y_AXIS];
+  block->end_position[X_AXIS] = target[X_AXIS];
+  block->end_position[Y_AXIS] = target[Y_AXIS];
+  
     block->steps[X_AXIS] = g_steps[X_AXIS];
     block->steps[Y_AXIS] = g_steps[Y_AXIS];
 	block->step_size[X_AXIS] = g_step_size[X_AXIS];

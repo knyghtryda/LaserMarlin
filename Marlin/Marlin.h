@@ -341,7 +341,7 @@ extern unsigned char LaserPower;
 #endif
 
 #ifdef LASER
-#include "galvo.h"
+#include <galvo.h>
 extern Galvo galvo;
 #endif
 

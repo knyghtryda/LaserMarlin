@@ -712,12 +712,20 @@ ISR(TIMER1_COMPA_vect) {
           if (_COUNTER(axis) > 0) { \
             _COUNTER(axis) -= current_block->step_event_count; \
 			count_position[_AXIS(AXIS)] += (int)count_direction[_AXIS(AXIS)] * (int)current_block->step_size[_AXIS(AXIS)]; \
-			transferDAC((volatile unsigned int *)count_position);\
+			WRITE(GALVO_SS_PIN, LOW); \
+			SPDR = AXIS ##_AXIS | (3 << 4); \
+			_SPI_TRANSFER \
+			SPDR = (unsigned int)count_position[_AXIS(AXIS)] >> 8; \
+			_SPI_TRANSFER \
+			SPDR = (unsigned int)count_position[_AXIS(AXIS)]; \
+			_SPI_TRANSFER \
+			WRITE(GALVO_SS_PIN, HIGH); \
 		  }
 		  
 	APPLY_GALVO_MOVEMENT(x, X);
 	APPLY_GALVO_MOVEMENT(y, Y);
 	
+	//transferDAC((volatile unsigned int *)count_position); 
 #endif
 
 

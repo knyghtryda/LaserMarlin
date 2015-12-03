@@ -63,6 +63,7 @@ typedef struct {
 
 #ifdef LASER
   unsigned int start_position[2];
+  unsigned int end_position[2];
   unsigned int step_size[2];
   unsigned int laser_power;
   bool laser_status; // LASER_OFF, LASER_ON

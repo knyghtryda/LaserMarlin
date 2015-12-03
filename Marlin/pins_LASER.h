@@ -21,8 +21,8 @@
 #define Y_MIN_PIN          -1//14
 #define Y_MAX_PIN          -1//15
 
-#define Z_STEP_PIN         46//3 //new board pin 59
-#define Z_DIR_PIN          42//4 //new board pin 60
+#define Z_STEP_PIN         42//3 //new board pin 59
+#define Z_DIR_PIN          40//4 //new board pin 60
 #define Z_ENABLE_PIN       48//2 //new board pin 58 //62
 #define Z_MIN_PIN          33//33
 #define Z_MAX_PIN          -1//19
@@ -199,5 +199,5 @@
   #define MISO_PIN         50
   #define MOSI_PIN         51
 
-#define STEP_TRIGGER 49  //Used to debug timing for stepper ISR
-#define ISR_TRIGGER 47 //Used to debug timing for stepper ISR
+#define STEP_TRIGGER 14  //Used to debug timing for stepper ISR
+#define ISR_TRIGGER 15 //Used to debug timing for stepper ISR

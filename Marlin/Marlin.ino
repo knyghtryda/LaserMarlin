@@ -47,6 +47,9 @@
   #endif
 #endif
 
+#ifdef LASER
+#include <galvo.h>
+#endif
 #if HAS_DIGIPOTSS
   #include <SPI.h>
 #endif

@@ -56,7 +56,7 @@
 #ifdef LASER
 #include <SPI.h>
 #include "laser.h"
-#include "galvo.h"
+#include <galvo.h>
 #else
 #include "temperature.h"
 #endif
@@ -204,6 +204,17 @@
  * M503 - Print the current settings (from memory not from EEPROM). Use S0 to leave off headings.
  * M540 - Use S[0|1] to enable or disable the stop SD card print on endstop hit (requires ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
  * M600 - Pause for filament change X[pos] Y[pos] Z[relative lift] E[initial retract] L[later retract distance for removal]
+ * ************ Laser and Galvo Specific ******************
+ * M650 - Laser On
+ * M651 - Laser Off
+ * M652 - Calculate offset Table
+ * M653 - Print Offset Table
+ * M654 - Reset Offset Table
+ * M655 - Calculate slope table
+ * M656 - Print Slope Table
+ * M657 - Print Reset Table
+ * M658 - Shift Point
+ * ************ Delta Configs ******************************
  * M665 - Set delta configurations: L<diagonal rod> R<delta radius> S<segments/s>
  * M666 - Set delta endstop adjustment
  * M605 - Set dual x-carriage movement mode: S<mode> [ X<duplication x-offset> R<duplication temp offset> ]
@@ -680,7 +691,12 @@ void setup() {
   // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
   Config_RetrieveSettings();
   //computes the calibration offsets.  This will need to be moved into Config_RetrieveSettings
-  galvo.ComputeCalibrationTable();
+  /*
+  SERIAL_ECHOLN("Calculating Calibration Table");
+  galvo.CalcCalibrationTable();
+  SERIAL_ECHOLN("Calculating Slope Table");
+  galvo.CalcSlopeTable();
+	*/
   lcd_init();
   _delay_ms(1000);  // wait 1sec to display the splash screen
 #ifndef LASER
@@ -5275,11 +5291,128 @@ inline void gcode_M503() {
   }
 #endif
 #ifdef LASER
-  /* Modifies default laser parameters */
-  inline void gcode_M655() {
-	  if (code_seen('H')) {
-		  /* Code here to adjust height */
+  inline void printDigitFiller(double value, int maxDigits) {
+	  int digits;
+	  if (value == 0) {
+		  digits = 1;
 	  }
+	  else {
+		  digits = floor(log10((float)abs(value))) + 1;  //gets number of digits of the coordinate value
+	  }
+	  if (value < 0) digits++;
+	  for (int i = 0; i < maxDigits - digits; i++) {
+		  SERIAL_ECHO(" ");
+	  }
+  }
+
+  inline void printPair(int x, int y) {
+	  SERIAL_ECHO("(");
+	  SERIAL_ECHO(x);
+	  SERIAL_ECHO(", ");
+	  SERIAL_ECHO(y);
+	  SERIAL_ECHO(")");
+  }
+
+  // This prints a coordinate pair with fixed spacing determined by the max number of digits
+  inline void printFilledPair(int x, int y, int max) {
+	  SERIAL_ECHO("(");
+	  SERIAL_ECHO(x);
+	  printDigitFiller(x, max);
+	  SERIAL_ECHO(", ");
+	  SERIAL_ECHO(y);
+	  printDigitFiller(y, max);
+	  SERIAL_ECHO(")");
+  }
+
+  inline void printSlopePair(int i, int j, int s) {
+	  int tmp_x, tmp_y;
+	  SERIAL_ECHO("[");
+	  tmp_x = galvo.slopes[i][j][s][X_AXIS][X_AXIS];
+	  tmp_y = galvo.slopes[i][j][s][X_AXIS][Y_AXIS];
+	  printFilledPair(tmp_x, tmp_y, 6);
+	  SERIAL_ECHO(", ");
+	  tmp_x = galvo.slopes[i][j][s][Y_AXIS][X_AXIS];
+	  tmp_y = galvo.slopes[i][j][s][Y_AXIS][Y_AXIS];
+	  printFilledPair(tmp_x, tmp_y, 6);
+	  SERIAL_ECHO("] ");
+  }
+
+  inline void printOffsetsTable() {
+	  int tmp_x, tmp_y;
+	  for (int j = galvo.getSteps(); j >= 0; j--) {
+		  for (int i = 0; i < galvo.getPoints(); i++) {
+			  tmp_x = galvo.offsets[i][j][X_AXIS];
+			  tmp_y = galvo.offsets[i][j][Y_AXIS];
+			  printFilledPair(tmp_x, tmp_y, 6);
+		  }
+		  SERIAL_EOL;
+	  }
+  }
+
+  inline void printSlopeTable() {
+	  int tmp_x, tmp_y, s;
+	  for (int j = galvo.getSteps() - 1; j >= 0; j--) {
+		  for (int i = 0; i < galvo.getSteps(); i++) {
+			  if (i < galvo.getSteps() >> 1) {
+				  s = galvo.S0;
+			  }
+			  else {
+				  s = galvo.S1;
+			  }
+			  printSlopePair(i, j, s);
+			  /*
+			  if (i < galvo.getSteps() >> 1) {
+				  if (j < galvo.getSteps() >> 1) {
+					  SERIAL_ECHO(" / ");
+				  }
+				  else {
+					  SERIAL_ECHO(" \\ ");
+				  }
+			  }
+			  else {
+				  if (j < galvo.getSteps() >> 1) {
+					  SERIAL_ECHO(" \\ ");
+					}
+					else {
+						SERIAL_ECHO(" / ");
+					}
+				
+				}
+				*/
+			printSlopePair(i, j, !s);
+		  }
+		  SERIAL_EOL;
+	  }
+  }
+
+  inline void gcode_M652() {
+	  SERIAL_ECHOLN("M652: Calculating Calibration Offset Table");
+	  galvo.CalcCalibrationTable();
+	  printOffsetsTable();
+  }
+  inline void gcode_M653() {
+	  SERIAL_ECHOLN("M653: Printing Calibration Offset Table");
+	  printOffsetsTable();
+  }
+  inline void gcode_M654() {
+	  SERIAL_ECHOLN("M654: Resetting Calibration Offset Table");
+	  galvo.ResetCalibrationTable();
+  }
+  inline void gcode_M655() {
+	  SERIAL_ECHOLN("M655: Calculating Calibration Slope Table");
+	  galvo.CalcSlopeTable();
+	  printSlopeTable();
+  }
+  inline void gcode_M656() {
+	  SERIAL_ECHOLN("M656: Printing Calibration Slope Table");
+	  printSlopeTable();
+  }
+  inline void gcode_M657() {
+	  SERIAL_ECHOLN("M657: Resetting Calibration Slope Table");
+	  galvo.ResetSlopeTable();
+  }
+  inline void gcode_M658() {
+
   }
 #endif
 /**
@@ -6000,8 +6133,26 @@ void process_next_command() {
 		case 651: // Turn off Laser
 			gcode_M651();
 			break;
-		case 655:
+		case 652: // Calculate calibration offsets table
+			gcode_M652();
+			break;
+		case 653: // Print calibration offsets table
+			gcode_M653();
+			break;
+		case 654: // Reset offsets table
+			gcode_M654();
+			break;
+		case 655: // Calculate calibration slopes table
 			gcode_M655();
+			break;
+		case 656: // Print calibration slopes table
+			gcode_M656();
+			break;
+		case 657: // Reset slopes table
+			gcode_M657();
+			break;
+		case 658: // Shift point
+			gcode_M658();
 			break;
 #endif
       case 907: // M907 Set digital trimpot motor current using axis codes.
@@ -6240,7 +6391,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 }
 #endif  // MESH_BED_LEVELING
 
-#ifdef GALVO_CALIBRATION
+#ifdef GALVO
 //custom plan buffer line for galvos.  Used to split lines on grid just like for mesh leveling.
 void galvo_plan_buffer_line(float x, float y, float z, const float e, float feed_rate, const uint8_t &extruder, uint8_t x_splits = 0xff, uint8_t y_splits = 0xff)
 {
@@ -6426,7 +6577,7 @@ void galvo_plan_buffer_line(float x, float y, float z, const float e, float feed
       #if defined(MESH_BED_LEVELING) 
         mesh_plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], (feedrate/60)*(feedrate_multiplier/100.0), active_extruder);
         return false;
-      #elif defined(GALVO_CALIBRATION)
+      #elif 0//defined(GALVO_CALIBRATION)
 		galvo_plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], (feedrate / 60)*(feedrate_multiplier / 100.0), active_extruder);
 #else
         line_to_destination(feedrate * feedrate_multiplier / 100.0);
